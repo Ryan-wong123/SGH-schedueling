@@ -36,8 +36,12 @@ The application runs as a local Python web server at `http://127.0.0.1:8000`.
 
 The scheduling logic is defined in `app.py`.
 
+- The assessor pool is taken from pharmacists in the roster who are available for GLF. The current app does not read a separate standalone assessor-list file.
+- A full GLF day can receive up to 4 assessments per assessor.
+- Each assessor can receive a maximum of 2 Mini-CEX assessments per day.
+- The assessee's required assessments are taken from the GLF assessment workbook.
 - Mini-CEX and Med Recon require the assessee to be on a ward.
-- Dispensing requires the assessee to be in OPS.
+- Dispensing requires the assessee to be in OPS. OPS availability is detected from green roster cells, OPS text, or recognized OPS shift/activity markers.
 - CBD and Rx Check can be scheduled when the assessee has a usable working location.
 - Assessors cannot assess themselves.
 - The student and assessor must both be marked `GLF` on the same date in the roster workbook.
@@ -46,10 +50,31 @@ The scheduling logic is defined in `app.py`.
   - OPS assessments require both people to be in OPS
   - general assessments require either an overlapping ward or both people in OPS
 - Assessors already listed in columns `G:K` for the same student are excluded from future assignments for that student.
+- For Mini-CEX and CBD, this is used to avoid assigning assessors from the immediate past cycle when those prior assessor names are present in the GLF assessment row.
 - During the same generated schedule, the app prefers assessors who have not already been assigned to that student.
-- Each assessor can receive up to 4 assessments per day.
-- Each assessor can receive up to 2 Mini-CEX assessments per day.
 - Overall assessor load is balanced so eligible assessors get turns as evenly as possible where the GLF/date/location constraints allow it.
+
+## Roster Workbook Logic
+
+The roster ward allocation workbook is used for both assessor and assessee availability.
+
+- The roster sheet identifies pharmacists who are scheduled to do GLF.
+- The ward sheet identifies ward numbers and ward-location assignments.
+- Green roster cells, OPS labels, and OPS shift/activity markers are treated as OPS availability.
+- Ward assessment matching uses ward numbers assigned in the ward allocation sheet.
+- A pharmacist can only be scheduled on a date where they are marked `GLF`.
+
+## GLF Assessment Workbook Logic
+
+The GLF assessment workbook decides which activities still need assignment.
+
+- The scheduler reads only the second worksheet.
+- Column `A` contains the assessee names.
+- Columns `G`, `H`, `I`, `J`, and `K` contain the assessment activities.
+- Blank cells in `G:K` are open assessment slots that need an assessor and date.
+- Black cells in `G:K` mean the assessee has passed or completed that assessment, so the scheduler skips them.
+- Cells in `G:K` that already contain an assessor name and date are treated as previous or existing assessments.
+- Existing assessor names are remembered so the scheduler avoids assigning the same assessor to the same assessee again where possible.
 
 
 ## Running The App
@@ -100,4 +125,3 @@ For each pending task, the scheduler searches the roster dates for a student/ass
 - the assessor is within the daily assessment limits
 
 When multiple assessors are eligible, the scheduler prefers assessors with lower total assigned load and avoids giving the same student the same assessor again where possible.
-
