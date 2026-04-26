@@ -7,6 +7,7 @@ import json
 import re
 import tempfile
 from collections import defaultdict
+from copy import copy
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -44,6 +45,13 @@ ASSESSMENT_LABELS = {
     "rx_check": "Rx Check",
 }
 
+GLF_ASSESSMENT_COLUMNS = {
+    6: "mini_cex",
+    7: "cbd",
+    8: "med_recon",
+    9: "dispensing",
+    10: "rx_check",
+}
 NEEDS_WARD = {"mini_cex", "med_recon"}
 NEEDS_OPS = {"dispensing"}
 MAX_DAILY_ASSESSMENTS = 4
@@ -68,6 +76,7 @@ class Task:
 
 @dataclass
 class Availability:
+    name: str = ""
     roster_text: str = ""
     wards: set[str] = field(default_factory=set)
     is_ops: bool = False
@@ -128,6 +137,8 @@ def parse_date(value: Any) -> date | None:
 def rgb_from_cell(cell: Any) -> str:
     try:
         fill = cell.fill
+        if not fill or not fill.patternType:
+            return ""
         color = fill.fgColor
         if color.type == "rgb" and color.rgb:
             return color.rgb.upper()
@@ -139,7 +150,7 @@ def rgb_from_cell(cell: Any) -> str:
 
 
 def is_black(fill: str) -> bool:
-    return fill in {"FF000000", "000000", "INDEXED:64", "INDEXED:8"}
+    return fill in {"FF000000", "00000000", "000000", "INDEXED:64", "INDEXED:8"}
 
 
 def is_green(fill: str) -> bool:
@@ -184,7 +195,9 @@ def workbook_cells(wb: Workbook) -> dict[str, list[list[Cell]]]:
 
 
 def split_people(value: Any) -> list[str]:
-    text = norm_text(value)
+    if value is None:
+        return []
+    text = str(value).replace("\xa0", " ")
     text = re.sub(r"[{}]", "\n", text)
     pieces = re.split(r"\n|/|;|,", text)
     names = []
@@ -193,6 +206,34 @@ def split_people(value: Any) -> list[str]:
         if len(candidate) >= 3 and not re.fullmatch(r"[A-Z0-9\- ]+", candidate):
             names.append(candidate)
     return names
+
+
+def strip_dates(text: str) -> str:
+    text = re.sub(r"\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b", " ", text)
+    text = re.sub(r"\b\d{1,2}\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s*\d{0,4}\b", " ", text, flags=re.I)
+    text = re.sub(r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s*\d{1,2}\s*\d{0,4}\b", " ", text, flags=re.I)
+    text = re.sub(r"\b\d{4}-\d{1,2}-\d{1,2}\b", " ", text)
+    return text
+
+
+def extract_assessor_names(value: Any, known_people: dict[str, str]) -> set[str]:
+    text = strip_dates(norm_text(value))
+    if not text:
+        return set()
+
+    found = {
+        key
+        for key, display in known_people.items()
+        if re.search(rf"(?<![A-Za-z]){re.escape(display)}(?![A-Za-z])", text, re.I)
+    }
+    if found:
+        return found
+
+    return {
+        name_key(name)
+        for name in split_people(text)
+        if looks_like_person(name)
+    }
 
 
 def looks_like_person(text: str) -> bool:
@@ -232,6 +273,7 @@ def parse_roster(wb: Workbook) -> tuple[dict[str, dict[date, Availability]], lis
                         if not key or person.casefold() == "ops":
                             continue
                         slot = availability[key][cdate]
+                        slot.name = person
                         slot.wards.add(ward)
                         slot.is_working = True
             continue
@@ -259,6 +301,7 @@ def parse_roster(wb: Workbook) -> tuple[dict[str, dict[date, Availability]], lis
                 if text.casefold() in {"", "al", "mc", "off", "leave", "ph", "do", "x"}:
                     continue
                 slot = availability[key][cdate]
+                slot.name = person
                 slot.roster_text = text or slot.roster_text
                 slot.is_working = True
                 if "glf" in text.casefold():
@@ -276,51 +319,65 @@ def find_name_column(row: list[Cell]) -> int:
     return 0
 
 
-def parse_glf_tasks(wb: Workbook) -> list[Task]:
+def parse_glf_tasks(wb: Workbook, known_people: dict[str, str]) -> list[Task]:
+    if len(wb.worksheets) < 2:
+        raise ValueError("The GLF assessment workbook must contain at least two sheets. The scheduler reads the second sheet.")
+
     tasks: list[Task] = []
-    sheets = workbook_cells(wb)
-    for sheet_name, rows in sheets.items():
-        for header_idx, header in enumerate(rows[:40]):
-            assessment_cols = {c: detect_assessment(cell.value) for c, cell in enumerate(header)}
-            assessment_cols = {c: a for c, a in assessment_cols.items() if a}
-            if len(assessment_cols) < 1:
+    ws = wb.worksheets[1]
+    rows = workbook_cells(wb)[ws.title]
+    for sheet_name, rows in {ws.title: rows}.items():
+        header_idx = 0
+        header_assessments = GLF_ASSESSMENT_COLUMNS.copy()
+        for idx, row in enumerate(rows[:40]):
+            detected = {
+                c: detect_assessment(row[c].value)
+                for c in GLF_ASSESSMENT_COLUMNS
+                if c < len(row) and detect_assessment(row[c].value)
+            }
+            if detected:
+                header_idx = idx
+                header_assessments.update(detected)
+                break
+
+        for r in range(header_idx + 1, len(rows)):
+            row = rows[r]
+            if not row:
+                continue
+            assessee = norm_name(row[0].value)
+            if not looks_like_person(assessee):
                 continue
 
-            name_col = find_name_column(header)
-            for r in range(header_idx + 1, len(rows)):
-                row = rows[r]
-                if name_col >= len(row):
+            assessee_key = name_key(assessee)
+            row_avoid = set()
+            for c in GLF_ASSESSMENT_COLUMNS:
+                if c >= len(row):
                     continue
-                assessee = norm_name(row[name_col].value)
-                if not looks_like_person(assessee):
-                    continue
-                row_text = " ".join(norm_text(cell.value) for cell in row)
-                row_avoid = set()
-                if re.search(r"past|previous|cycle|assessor", row_text, re.I):
-                    row_avoid.update(name_key(name) for name in split_people(row_text))
+                cell = row[c]
+                row_avoid.update(extract_assessor_names(cell.value, known_people))
+                row_avoid.update(extract_assessor_names(cell.comment, known_people))
 
-                for c, assessment in assessment_cols.items():
-                    if c >= len(row):
-                        continue
-                    cell = row[c]
-                    text = norm_text(cell.value)
-                    if is_black(cell.fill):
-                        continue
-                    if text and re.search(r"pass|complete|done|exempt|n/a", text, re.I):
-                        continue
-                    if text and looks_like_person(text):
-                        row_avoid.add(name_key(text))
-                        continue
-                    if text and not re.search(r"due|pending|assign|yes|y|to do|^$", text, re.I):
-                        continue
-                    tasks.append(Task(
-                        assessee=assessee,
-                        assessment=assessment,
-                        source_sheet=sheet_name,
-                        source_cell=f"{get_column_letter(c + 1)}{r + 1}",
-                        avoid={n for n in row_avoid if n and n != name_key(assessee)},
-                    ))
-            break
+            for c, assessment in header_assessments.items():
+                if c >= len(row):
+                    continue
+                cell = row[c]
+                text = norm_text(cell.value)
+                prior_assessors = extract_assessor_names(text, known_people)
+                if is_black(cell.fill):
+                    continue
+                if prior_assessors:
+                    continue
+                if text and re.search(r"pass|complete|done|exempt|n/a", text, re.I):
+                    continue
+                if text and not re.search(r"due|pending|assign|yes|y|to do|^$", text, re.I):
+                    continue
+                tasks.append(Task(
+                    assessee=assessee,
+                    assessment=assessment,
+                    source_sheet=sheet_name,
+                    source_cell=f"{get_column_letter(c + 1)}{r + 1}",
+                    avoid={n for n in row_avoid if n and n != assessee_key},
+                ))
     return dedupe_tasks(tasks)
 
 
@@ -336,8 +393,8 @@ def dedupe_tasks(tasks: list[Task]) -> list[Task]:
     return unique
 
 
-def requirement_met(assessment: str, slot: Availability) -> bool:
-    if not slot.is_working:
+def supports_assessment_activity(assessment: str, slot: Availability) -> bool:
+    if not slot.is_working or not slot.is_glf:
         return False
     if assessment in NEEDS_WARD:
         return bool(slot.wards)
@@ -346,18 +403,26 @@ def requirement_met(assessment: str, slot: Availability) -> bool:
     return bool(slot.wards or slot.is_ops or slot.roster_text)
 
 
+def matching_activity_location(assessment: str, assessee_slot: Availability, assessor_slot: Availability) -> bool:
+    if not supports_assessment_activity(assessment, assessee_slot):
+        return False
+    if not supports_assessment_activity(assessment, assessor_slot):
+        return False
+    if assessment in NEEDS_OPS:
+        return assessee_slot.is_ops and assessor_slot.is_ops
+    if assessment in NEEDS_WARD:
+        return bool(assessee_slot.wards & assessor_slot.wards)
+    return bool(assessee_slot.wards & assessor_slot.wards) or (assessee_slot.is_ops and assessor_slot.is_ops)
+
+
 def schedule_tasks(tasks: list[Task], availability: dict[str, dict[date, Availability]], dates: list[date]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     scheduled = []
     unscheduled = []
     load_by_assessor_day: dict[tuple[str, date], int] = defaultdict(int)
     mini_by_assessor_day: dict[tuple[str, date], int] = defaultdict(int)
+    total_load_by_assessor: dict[str, int] = defaultdict(int)
+    scheduled_assessors_by_student: dict[str, set[str]] = defaultdict(set)
     assessor_names = sorted(availability.keys())
-    glf_days = {
-        cdate
-        for person_days in availability.values()
-        for cdate, slot in person_days.items()
-        if slot.is_glf
-    }
 
     for task in sorted(tasks, key=lambda t: (t.assessment != "mini_cex", t.assessee)):
         assessee_key = name_key(task.assessee)
@@ -367,31 +432,31 @@ def schedule_tasks(tasks: list[Task], availability: dict[str, dict[date, Availab
 
         for cdate in dates:
             assessee_slot = availability.get(assessee_key, {}).get(cdate, Availability())
-            if not requirement_met(task.assessment, assessee_slot):
+            if not supports_assessment_activity(task.assessment, assessee_slot):
                 continue
-            strict_glf = cdate in glf_days
             for assessor_key in assessor_names:
                 if assessor_key == assessee_key or assessor_key in task.avoid:
                     continue
                 assessor_slot = availability[assessor_key].get(cdate, Availability())
-                if not assessor_slot.is_working:
-                    continue
-                if strict_glf and not assessor_slot.is_glf:
+                if not matching_activity_location(task.assessment, assessee_slot, assessor_slot):
                     continue
                 day_key = (assessor_key, cdate)
                 if load_by_assessor_day[day_key] >= MAX_DAILY_ASSESSMENTS:
                     continue
                 if task.assessment == "mini_cex" and mini_by_assessor_day[day_key] >= MAX_DAILY_MINI_CEX:
                     continue
-                score = load_by_assessor_day[day_key] * 10 + (0 if assessor_slot.is_glf else 4)
-                if task.assessment in NEEDS_WARD and assessor_slot.wards & assessee_slot.wards:
-                    score -= 3
+                student_repeat = assessor_key in scheduled_assessors_by_student[assessee_key]
+                score = (
+                    (1000 if student_repeat else 0)
+                    + total_load_by_assessor[assessor_key] * 20
+                    + load_by_assessor_day[day_key] * 10
+                )
                 if score < best_score:
                     best_score = score
                     best = (cdate, assessor_key, assessee_slot, assessor_slot)
 
         if best is None:
-            reasons.append("No date had a matching assessee location plus an available assessor within daily limits.")
+            reasons.append("No date had both the student and an eligible assessor marked GLF with matching activity/location within daily limits.")
             unscheduled.append({
                 "assessee": task.assessee,
                 "assessment": ASSESSMENT_LABELS[task.assessment],
@@ -402,6 +467,8 @@ def schedule_tasks(tasks: list[Task], availability: dict[str, dict[date, Availab
 
         cdate, assessor_key, assessee_slot, assessor_slot = best
         load_by_assessor_day[(assessor_key, cdate)] += 1
+        total_load_by_assessor[assessor_key] += 1
+        scheduled_assessors_by_student[assessee_key].add(assessor_key)
         if task.assessment == "mini_cex":
             mini_by_assessor_day[(assessor_key, cdate)] += 1
         scheduled.append({
@@ -417,52 +484,110 @@ def schedule_tasks(tasks: list[Task], availability: dict[str, dict[date, Availab
 
 
 def display_name(key: str, availability: dict[str, dict[date, Availability]]) -> str:
-    # Name casing is reconstructed from the normalized key when the source row is not retained.
+    for slot in availability.get(key, {}).values():
+        if slot.name:
+            return slot.name
+    # Fallback casing is reconstructed from the normalized key when the source row is not retained.
     return " ".join(part.capitalize() for part in key.split())
 
 
-def write_schedule_xlsx(scheduled: list[dict[str, Any]], unscheduled: list[dict[str, Any]]) -> Path:
+def scheduled_cell_value(item: dict[str, Any]) -> str:
+    cdate = parse_date(item["date"])
+    if cdate:
+        return f"{item['assessor']}\n{cdate.strftime('%d %b %Y')}"
+    return item["assessor"]
+
+
+def write_updated_glf_workbook(glf_wb: Workbook, scheduled: list[dict[str, Any]]) -> Path:
     OUTPUT_DIR.mkdir(exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    out = OUTPUT_DIR / f"final-glf-schedule-{stamp}.xlsx"
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Final Schedule"
-    headers = ["Date", "Assessee", "Assessment", "Assessor", "Assessee Location", "Assessor Location", "Source"]
-    ws.append(headers)
+    out = OUTPUT_DIR / f"updated-glf-assessment-{stamp}.xlsx"
+    if len(glf_wb.worksheets) < 2:
+        raise ValueError("The GLF assessment workbook must contain at least two sheets. The scheduler updates the second sheet.")
+
+    target_ws = glf_wb.worksheets[1]
     for item in scheduled:
-        ws.append([item["date"], item["assessee"], item["assessment"], item["assessor"], item["assessee_location"], item["assessor_location"], item["source"]])
+        source = item.get("source", "")
+        if "!" not in source:
+            continue
+        sheet_name, cell_ref = source.rsplit("!", 1)
+        if sheet_name != target_ws.title:
+            continue
+        cell = target_ws[cell_ref]
+        cell.value = scheduled_cell_value(item)
+        alignment = copy(cell.alignment)
+        alignment.wrap_text = True
+        alignment.vertical = "top"
+        cell.alignment = alignment
 
-    us = wb.create_sheet("Unscheduled")
-    us.append(["Assessee", "Assessment", "Source", "Reason"])
-    for item in unscheduled:
-        us.append([item["assessee"], item["assessment"], item["source"], item["reason"]])
-
-    for sheet in wb.worksheets:
-        for cell in sheet[1]:
-            cell.font = Font(bold=True, color="FFFFFF")
-            cell.fill = PatternFill("solid", fgColor="1F4E78")
-            cell.alignment = Alignment(horizontal="center")
-        sheet.freeze_panes = "A2"
-        for col_idx, column in enumerate(sheet.columns, 1):
-            width = min(max(len(str(cell.value or "")) for cell in column) + 2, 42)
-            sheet.column_dimensions[get_column_letter(col_idx)].width = width
-        for row in sheet.iter_rows():
-            for cell in row:
-                cell.alignment = Alignment(vertical="top", wrap_text=True)
-    wb.save(out)
+    glf_wb.save(out)
     return out
+
+
+def write_updated_glf_workbook_with_excel(glf_raw: bytes, password: str, scheduled: list[dict[str, Any]]) -> Path:
+    try:
+        import win32com.client  # type: ignore[import-not-found]
+    except Exception as exc:
+        raise RuntimeError("Excel automation is not available. Install pywin32 to preserve the original workbook format.") from exc
+
+    OUTPUT_DIR.mkdir(exist_ok=True)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    source = OUTPUT_DIR / f"_uploaded-glf-{stamp}.xlsx"
+    out = OUTPUT_DIR / f"updated-glf-assessment-{stamp}.xlsx"
+    source.write_bytes(glf_raw)
+
+    excel = None
+    workbook = None
+    try:
+        excel = win32com.client.DispatchEx("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        workbook = excel.Workbooks.Open(
+            str(source.resolve()),
+            UpdateLinks=0,
+            ReadOnly=False,
+            Password=password or "",
+        )
+        if workbook.Worksheets.Count < 2:
+            raise ValueError("The GLF assessment workbook must contain at least two sheets. The scheduler updates the second sheet.")
+
+        target_ws = workbook.Worksheets(2)
+        target_name = str(target_ws.Name)
+        for item in scheduled:
+            source_ref = item.get("source", "")
+            if "!" not in source_ref:
+                continue
+            sheet_name, cell_ref = source_ref.rsplit("!", 1)
+            if sheet_name != target_name:
+                continue
+            cell = target_ws.Range(cell_ref)
+            cell.Value = scheduled_cell_value(item)
+            cell.WrapText = True
+            cell.VerticalAlignment = -4160  # xlTop
+
+        workbook.SaveAs(str(out.resolve()), FileFormat=51, Password="")
+        return out
+    finally:
+        if workbook is not None:
+            workbook.Close(SaveChanges=False)
+        if excel is not None:
+            excel.Quit()
+        try:
+            source.unlink()
+        except OSError:
+            pass
 
 
 def run_scheduler(roster_raw: bytes, glf_raw: bytes, password: str) -> dict[str, Any]:
     roster_wb = load_excel_bytes(roster_raw)
     glf_wb = load_excel_bytes(glf_raw, password=password)
     availability, dates = parse_roster(roster_wb)
-    tasks = parse_glf_tasks(glf_wb)
+    known_people = {key: display_name(key, availability) for key in availability}
+    tasks = parse_glf_tasks(glf_wb, known_people)
     if not tasks:
         raise ValueError("No assignable GLF assessment cells were found. Check that the GLF overview has assessment headers and blank/due cells.")
     scheduled, unscheduled = schedule_tasks(tasks, availability, dates)
-    out = write_schedule_xlsx(scheduled, unscheduled)
+    out = write_updated_glf_workbook_with_excel(glf_raw, password, scheduled)
     return {
         "scheduled": scheduled,
         "unscheduled": unscheduled,
