@@ -94,8 +94,8 @@ http://127.0.0.1:8000
 
 Upload:
 
-- `7.Roster Ward Allocation(13Apr-8May26) .xlsx`
-- `GLF Assessment Overview 2024_updated.xlsx`
+- `7.Roster Ward Allocation.xlsx`
+- `GLF Assessment Overview.xlsx`
 
 If the GLF workbook is encrypted, enter its password in the password field before generating the schedule.
 
