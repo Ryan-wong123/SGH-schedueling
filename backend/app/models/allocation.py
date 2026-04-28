@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Literal
+
+AssessmentType = Literal["Rx Check", "Dispensing", "Med Recon", "MiniCeX"]
+LocationType = Literal["Ward", "OPS", "Unknown"]
+AllocationStatus = Literal[
+    "Allocated",
+    "Unallocated",
+    "Skipped - Already Passed",
+    "Skipped - Already Allocated",
+    "Skipped - Not Applicable",
+    "Skipped - Unsupported Cell State",
+]
+
+ASSESSMENT_TYPES: tuple[AssessmentType, ...] = ("Rx Check", "Dispensing", "Med Recon", "MiniCeX")
+REPEAT_AVOIDANCE_ASSESSMENTS = {"Med Recon", "MiniCeX"}
+
+
+@dataclass(frozen=True)
+class GlfAssessmentNeed:
+    assessee_name: str
+    assessment_type: AssessmentType
+    original_glf_cell_reference: str
+    needs_allocation: bool
+    status: AllocationStatus | None = None
+    reason: str = ""
+    existing_allocation_history: str = ""
+    existing_assessors_for_row: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class RosterEntry:
+    assessee_name: str
+    date: str
+    location: LocationType
+    source_cell: str = ""
+
+
+@dataclass(frozen=True)
+class RosterData:
+    available_assessors_by_date: dict[str, list[str]]
+    assessee_entries_by_name: dict[str, list[RosterEntry]]
+
+
+@dataclass
+class AllocationRecord:
+    date: str
+    assessee_name: str
+    assessment_type: str
+    assessee_location: str
+    assigned_assessor: str
+    assessor_glf_availability_date: str
+    status: AllocationStatus
+    reason: str
+    original_glf_cell_reference: str
+    existing_allocation_history: str
+
+    def to_api_dict(self) -> dict[str, str]:
+        return {
+            "date": self.date,
+            "assesseeName": self.assessee_name,
+            "assessmentType": self.assessment_type,
+            "assesseeLocation": self.assessee_location,
+            "assignedAssessor": self.assigned_assessor,
+            "assessorGlfAvailabilityDate": self.assessor_glf_availability_date,
+            "status": self.status,
+            "reason": self.reason,
+            "originalGlfCellReference": self.original_glf_cell_reference,
+            "existingAllocationHistory": self.existing_allocation_history,
+        }
+
+    def row_values(self) -> list[str]:
+        return [
+            self.date,
+            self.assessee_name,
+            self.assessment_type,
+            self.assessee_location,
+            self.assigned_assessor,
+            self.assessor_glf_availability_date,
+            self.status,
+            self.reason,
+            self.original_glf_cell_reference,
+            self.existing_allocation_history,
+        ]
