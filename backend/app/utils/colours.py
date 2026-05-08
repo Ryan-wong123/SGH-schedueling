@@ -51,6 +51,17 @@ def has_no_fill(cell) -> bool:
     return fill is None or fill.fill_type is None or fill_rgb(cell) in (None, "000000")
 
 
+def is_white_fill(cell) -> bool:
+    fill = getattr(cell, "fill", None)
+    if fill is None or fill.fill_type is None:
+        return True
+    color = fill.fgColor
+    if color is not None and color.type == "theme" and color.theme == 0 and color.tint == 0:
+        return True
+    rgb = _rgb_tuple(cell)
+    return bool(rgb and min(rgb) >= 245)
+
+
 def is_black_fill(cell) -> bool:
     rgb = _rgb_tuple(cell)
     return bool(rgb and max(rgb) <= 45)
@@ -82,21 +93,7 @@ def is_red_fill(cell) -> bool:
 
 
 def is_ward_fill(cell) -> bool:
-    if has_no_fill(cell):
-        return True
-    rgb = _rgb_tuple(cell)
-    if not rgb:
-        return False
-    red, green, blue = rgb
-    if min(rgb) >= 235:
-        return True
-    if red >= 185 and green >= 135 and blue >= 185:
-        return True
-    if red >= 210 and green >= 170 and blue >= 120:
-        return True
-    if red >= 190 and 80 <= green <= 190 and blue <= 120:
-        return True
-    return False
+    return is_white_fill(cell)
 
 
 def classify_location_from_fill(cell) -> LocationType:

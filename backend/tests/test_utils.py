@@ -30,4 +30,5 @@ def test_colour_classification() -> None:
     assert is_black_fill(cell_with_fill("FF000000"))
     assert is_yellow_fill(cell_with_fill("FFFFFF00"))
     assert classify_location_from_fill(cell_with_fill("FF92D050")) == "OPS"
-    assert classify_location_from_fill(cell_with_fill("FFFBE2D5")) == "Ward"
+    assert classify_location_from_fill(cell_with_fill("FFFFFFFF")) == "Ward"
+    assert classify_location_from_fill(cell_with_fill("FFFBE2D5")) == "Unknown"

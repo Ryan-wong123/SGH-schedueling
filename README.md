@@ -21,13 +21,6 @@ Health check:
 http://127.0.0.1:8000/health
 ```
 
-Run tests:
-
-```powershell
-cd backend
-python -m pytest
-```
-
 ## Frontend
 
 ```powershell
@@ -36,15 +29,9 @@ npm install
 npm run dev
 ```
 
-Local app:
+Open local app:
 
 ```text
 http://127.0.0.1:5173
 ```
 
-Production build:
-
-```powershell
-cd frontend
-npm run build
-```

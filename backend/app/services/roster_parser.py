@@ -3,13 +3,13 @@ from __future__ import annotations
 from collections import defaultdict
 
 from app.models.allocation import RosterData, RosterEntry
-from app.utils.colours import classify_location_from_fill, is_yellow_fill
+from app.utils.colours import classify_location_from_fill, is_green_fill, is_white_fill, is_yellow_fill
 from app.utils.dates import format_date, parse_date
 from app.utils.errors import AppError
 from app.utils.names import names_prefix_match, normalize_name
 
 
-SKIP_ROSTER_VALUES = {"", "glf", "x", "off", "al", "mc", "leave", "hl"}
+SKIP_ROSTER_VALUES = {"", "glf", "x", "off", "al", "mc", "leave", "hl", "ops"}
 
 
 def _find_date_columns(ws) -> tuple[int, dict[int, str]]:
@@ -40,12 +40,20 @@ def _add_entry(entries: dict[str, list[RosterEntry]], name: str, entry: RosterEn
     entries[normalize_name(name)].append(entry)
 
 
-def parse_roster(workbook) -> RosterData:
-    ws = workbook.worksheets[0]
-    date_row, date_columns = _find_date_columns(ws)
-    available: dict[str, list[str]] = defaultdict(list)
-    entries: dict[str, list[RosterEntry]] = defaultdict(list)
+def _extract_ward_names(value: object) -> list[str]:
+    if value is None:
+        return []
+    text = str(value).replace("\xa0", " ").strip()
+    names: list[str] = []
+    for part in text.replace("{", "\n").replace("}", "\n").splitlines():
+        name = part.strip()
+        if _is_schedule_value(name):
+            names.append(name)
+    return names
 
+
+def _parse_primary_roster_sheet(ws, available: dict[str, list[str]], entries: dict[str, list[RosterEntry]]) -> None:
+    date_row, date_columns = _find_date_columns(ws)
     for row_index in range(date_row + 1, ws.max_row + 1):
         name_value = ws.cell(row_index, 1).value
         if name_value is None:
@@ -61,10 +69,7 @@ def parse_roster(workbook) -> RosterData:
             if text.casefold() == "glf" and is_yellow_fill(cell):
                 available[date_text].append(name)
                 continue
-            if not _is_schedule_value(value):
-                continue
-            location = classify_location_from_fill(cell)
-            if location == "Unknown":
+            if not _is_schedule_value(value) or not is_green_fill(cell):
                 continue
             _add_entry(
                 entries,
@@ -72,10 +77,42 @@ def parse_roster(workbook) -> RosterData:
                 RosterEntry(
                     assessee_name=name,
                     date=date_text,
-                    location=location,
+                    location="OPS",
                     source_cell=cell.coordinate,
                 ),
             )
+
+
+def _parse_ward_roster_sheet(ws, entries: dict[str, list[RosterEntry]]) -> None:
+    date_row, date_columns = _find_date_columns(ws)
+    for row_index in range(date_row + 1, ws.max_row + 1):
+        for col, date_text in date_columns.items():
+            cell = ws.cell(row_index, col)
+            if not is_white_fill(cell):
+                continue
+            if classify_location_from_fill(cell) != "Ward":
+                continue
+            for name in _extract_ward_names(cell.value):
+                _add_entry(
+                    entries,
+                    name,
+                    RosterEntry(
+                        assessee_name=name,
+                        date=date_text,
+                        location="Ward",
+                        source_cell=cell.coordinate,
+                    ),
+                )
+
+
+def parse_roster(workbook) -> RosterData:
+    if len(workbook.worksheets) < 2:
+        raise AppError("The roster workbook must contain at least two worksheets.")
+    available: dict[str, list[str]] = defaultdict(list)
+    entries: dict[str, list[RosterEntry]] = defaultdict(list)
+
+    _parse_primary_roster_sheet(workbook.worksheets[0], available, entries)
+    _parse_ward_roster_sheet(workbook.worksheets[1], entries)
 
     for date_text in list(available):
         available[date_text] = sorted(set(available[date_text]), key=normalize_name)

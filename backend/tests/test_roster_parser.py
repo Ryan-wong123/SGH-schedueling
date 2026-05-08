@@ -8,7 +8,7 @@ def build_roster_workbook() -> Workbook:
     wb = Workbook()
     ws = wb.active
     ws.title = "Roster First"
-    wb.create_sheet("Ignored Ward Sheet")
+    ward = wb.create_sheet("Ward Sheet")
     ws["B4"] = "15/04/26"
     ws["C4"] = "16/04/26"
     ws["A5"] = "Genevieve Subur"
@@ -19,15 +19,20 @@ def build_roster_workbook() -> Workbook:
     ws["B6"].fill = PatternFill(fill_type="solid", fgColor="FFFBE2D5")
     ws["C6"] = "Clinic-1"
     ws["C6"].fill = PatternFill(fill_type="solid", fgColor="FF92D050")
-    ignored = wb["Ignored Ward Sheet"]
-    ignored["A1"] = "Should not matter"
-    ignored["B4"] = "17/04/26"
+    ward["B2"] = "15/04/26"
+    ward["C2"] = "17/04/26"
+    ward["B3"] = "Fiona Yeo\n{Amanda Chua}"
+    ward["B3"].fill = PatternFill(fill_type="solid", fgColor="FFFFFFFF")
+    ward["C3"] = "Amanda Chua"
+    ward["C3"].fill = PatternFill(fill_type="solid", fgColor="FFFBE2D5")
     return wb
 
 
-def test_roster_parser_uses_first_sheet_only() -> None:
+def test_roster_parser_uses_first_sheet_for_glf_and_second_sheet_for_white_wards() -> None:
     roster = parse_roster(build_roster_workbook())
     assert roster.available_assessors_by_date == {"15/04/26": ["Genevieve Subur"]}
     entries = find_roster_entries(roster, "Amanda Chua Jing Yi")
-    assert [entry.location for entry in entries] == ["Ward", "OPS"]
-    assert all(entry.date != "17/04/26" for entry in entries)
+    assert sorted((entry.date, entry.location) for entry in entries) == [
+        ("15/04/26", "Ward"),
+        ("16/04/26", "OPS"),
+    ]
