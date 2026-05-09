@@ -4,11 +4,22 @@ import { ErrorMessage } from "./components/ErrorMessage";
 import { ResultsSummary } from "./components/ResultsSummary";
 import { ResultsTable } from "./components/ResultsTable";
 import { UploadForm } from "./components/UploadForm";
-import type { GenerateAllocationResponse } from "./types/allocation";
+import type { AllocationRecord, GenerateAllocationResponse, ResultsFilter } from "./types/allocation";
 import "./styles/app.css";
+
+function recordMatchesFilter(record: AllocationRecord, filter: ResultsFilter) {
+  if (filter === "allocated") {
+    return record.status === "Allocated";
+  }
+  if (filter === "unallocated") {
+    return record.status === "Unallocated";
+  }
+  return record.status.startsWith("Skipped");
+}
 
 export default function App() {
   const [result, setResult] = useState<GenerateAllocationResponse | null>(null);
+  const [resultsFilter, setResultsFilter] = useState<ResultsFilter>("allocated");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -17,6 +28,7 @@ export default function App() {
     setError("");
     setResult(null);
     try {
+      setResultsFilter("allocated");
       setResult(await generateAllocation(formData));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected processing error.");
@@ -42,12 +54,12 @@ export default function App() {
         {result && (
           <section className="results">
             <div className="results-top">
-              <ResultsSummary summary={result.summary} />
+              <ResultsSummary activeFilter={resultsFilter} summary={result.summary} onFilterChange={setResultsFilter} />
               <a className="download-button" href={workbookDownloadUrl(result.download_id)}>
                 Download workbook
               </a>
             </div>
-            <ResultsTable records={result.records} />
+            <ResultsTable records={result.records.filter((record) => recordMatchesFilter(record, resultsFilter))} />
           </section>
         )}
       </section>

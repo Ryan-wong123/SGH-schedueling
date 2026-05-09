@@ -7,6 +7,7 @@ interface Props {
 export function ResultsTable({ records }: Props) {
   return (
     <div className="table-wrap">
+      {records.length === 0 ? <div className="empty-state">No records match this filter.</div> : null}
       <table>
         <thead>
           <tr>
