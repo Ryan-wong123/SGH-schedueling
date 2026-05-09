@@ -51,6 +51,18 @@ def test_glf_parser_uses_second_sheet_and_classifies_cells() -> None:
     assert all(need.assessment_type not in {"CBD", "PA"} for need in needs)
 
 
+def test_glf_parser_stops_before_legend_block() -> None:
+    wb = build_glf_workbook()
+    ws = wb["Progress"]
+    ws.append(["Legend"])
+    ws.append(["arrange for CBD in cycle 1", None, None, None, None, None, None, None, None, None, "note", None])
+    ws.append(["rotation in IP first", None, None, None, None, None, None, None, None, None, None, "note"])
+
+    needs = parse_glf_progress(wb)
+
+    assert {need.assessee_name for need in needs} == {"Person One"}
+
+
 def test_unencrypted_glf_workbook_can_load_when_password_supplied() -> None:
     loaded = load_glf_workbook_from_bytes(workbook_bytes(build_glf_workbook()), "anything")
     assert loaded.sheetnames[1] == "Progress"

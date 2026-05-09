@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Dict, List, Tuple
 
 from openpyxl.utils import get_column_letter
 
@@ -16,7 +17,8 @@ HEADER_ALIASES = {
     "medrecon": "Med Recon",
     "minicex": "MiniCeX",
 }
-SECTION_HEADERS = {"legend", "new pre-reg > oprs"}
+SECTION_HEADERS = {"new pre-reg > oprs"}
+END_MARKERS = {"legend"}
 
 
 def _canonical_header(value: object) -> str:
@@ -24,9 +26,9 @@ def _canonical_header(value: object) -> str:
     return HEADER_ALIASES.get(text, "")
 
 
-def _find_assessment_columns(ws) -> tuple[int, dict[str, int]]:
+def _find_assessment_columns(ws) -> Tuple[int, Dict[str, int]]:
     for row in ws.iter_rows(min_row=1, max_row=min(ws.max_row, 30)):
-        found: dict[str, int] = {}
+        found: Dict[str, int] = {}
         for cell in row:
             assessment = _canonical_header(cell.value)
             if assessment:
@@ -48,7 +50,11 @@ def _is_section_header(value: object) -> bool:
     return False
 
 
-def _extract_existing_assessors(text: object) -> tuple[str, ...]:
+def _is_end_marker(value: object) -> bool:
+    return normalize_name(value) in END_MARKERS
+
+
+def _extract_existing_assessors(text: object) -> Tuple[str, ...]:
     if text is None:
         return ()
     raw = str(text).strip()
@@ -60,14 +66,16 @@ def _extract_existing_assessors(text: object) -> tuple[str, ...]:
     return names or (raw,)
 
 
-def parse_glf_progress(workbook) -> list[GlfAssessmentNeed]:
+def parse_glf_progress(workbook) -> List[GlfAssessmentNeed]:
     ws = workbook.worksheets[1]
     header_row, assessment_columns = _find_assessment_columns(ws)
-    needs: list[GlfAssessmentNeed] = []
+    needs: List[GlfAssessmentNeed] = []
 
     for row_index in range(header_row + 1, ws.max_row + 1):
         name_cell = ws.cell(row_index, 1)
         assessee_name = str(name_cell.value).strip() if name_cell.value is not None else ""
+        if _is_end_marker(assessee_name):
+            break
         if _is_section_header(assessee_name):
             continue
 
@@ -75,7 +83,7 @@ def parse_glf_progress(workbook) -> list[GlfAssessmentNeed]:
         if not row_has_context:
             continue
 
-        existing_for_row: list[str] = []
+        existing_for_row: List[str] = []
         for assessment in ("Med Recon", "MiniCeX"):
             existing_for_row.extend(_extract_existing_assessors(ws.cell(row_index, assessment_columns[assessment]).value))
 

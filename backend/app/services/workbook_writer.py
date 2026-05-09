@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from typing import List
 
 from app.models.allocation import AllocationRecord
 
@@ -26,7 +27,7 @@ def _allocation_cell_text(record: AllocationRecord) -> str:
     return record.assigned_assessor
 
 
-def add_generated_allocation_sheet(workbook, records: list[AllocationRecord]) -> str:
+def add_generated_allocation_sheet(workbook, records: List[AllocationRecord]) -> str:
     template = workbook.worksheets[1]
     sheet_name = unique_generated_sheet_name(workbook)
     ws = workbook.copy_worksheet(template)

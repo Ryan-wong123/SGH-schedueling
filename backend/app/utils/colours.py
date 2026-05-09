@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from colorsys import rgb_to_hsv
-from typing import Literal
+from typing import Literal, Optional, Tuple
 
 from openpyxl.styles.colors import COLOR_INDEX
 
 LocationType = Literal["Ward", "OPS", "Unknown"]
 
 
-def _normalise_hex(value: str | None) -> str | None:
+def _normalise_hex(value: Optional[str]) -> Optional[str]:
     if not value:
         return None
     value = value.strip()
@@ -23,7 +23,7 @@ def _normalise_hex(value: str | None) -> str | None:
     return value.upper()
 
 
-def fill_rgb(cell) -> str | None:
+def fill_rgb(cell) -> Optional[str]:
     fill = getattr(cell, "fill", None)
     if fill is None or fill.fill_type is None:
         return None
@@ -39,7 +39,7 @@ def fill_rgb(cell) -> str | None:
     return None
 
 
-def _rgb_tuple(cell) -> tuple[int, int, int] | None:
+def _rgb_tuple(cell) -> Optional[Tuple[int, int, int]]:
     rgb = fill_rgb(cell)
     if not rgb:
         return None

@@ -1,3 +1,5 @@
+from typing import Dict, List
+
 from app.models.allocation import GlfAssessmentNeed, RosterData, RosterEntry
 from app.services.allocation_service import allocate_assessments, summarize_records
 
@@ -12,8 +14,8 @@ def make_need(name: str, assessment: str, cell: str = "G2", existing=()) -> GlfA
     )
 
 
-def roster_for(entries: list[RosterEntry], assessors_by_date: dict[str, list[str]]) -> RosterData:
-    by_name: dict[str, list[RosterEntry]] = {}
+def roster_for(entries: List[RosterEntry], assessors_by_date: Dict[str, List[str]]) -> RosterData:
+    by_name: Dict[str, List[RosterEntry]] = {}
     for entry in entries:
         by_name.setdefault(entry.assessee_name.casefold(), []).append(entry)
     return RosterData(assessors_by_date, by_name)

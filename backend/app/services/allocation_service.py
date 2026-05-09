@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 
 from app.models.allocation import (
     AllocationRecord,
@@ -16,7 +17,7 @@ from app.services.roster_parser import find_roster_entries
 from app.utils.names import normalize_name
 
 
-ASSESSMENT_LOCATIONS: dict[AssessmentType, set[LocationType]] = {
+ASSESSMENT_LOCATIONS: Dict[AssessmentType, Set[LocationType]] = {
     "Rx Check": {"Ward", "OPS"},
     "Dispensing": {"OPS"},
     "Med Recon": {"Ward"},
@@ -30,7 +31,7 @@ class AssessorLoad:
     minicex: int = 0
 
 
-def summarize_records(records: list[AllocationRecord]) -> dict[str, int]:
+def summarize_records(records: List[AllocationRecord]) -> Dict[str, int]:
     allocated = sum(1 for record in records if record.status == "Allocated")
     unallocated = sum(1 for record in records if record.status == "Unallocated")
     skipped = len(records) - allocated - unallocated
@@ -41,7 +42,7 @@ def is_location_compatible(assessment_type: AssessmentType, location: LocationTy
     return location in ASSESSMENT_LOCATIONS[assessment_type]
 
 
-def _existing_matches_assessor(existing: tuple[str, ...], assessor_name: str) -> bool:
+def _existing_matches_assessor(existing: Tuple[str, ...], assessor_name: str) -> bool:
     assessor = normalize_name(assessor_name)
     for existing_name in existing:
         item = normalize_name(existing_name)
@@ -63,12 +64,12 @@ def _can_accept(load: AssessorLoad, assessment_type: AssessmentType) -> bool:
 
 
 def _select_assessor(
-    assessors: list[str],
+    assessors: List[str],
     date_text: str,
     assessment_type: AssessmentType,
-    loads: dict[str, dict[str, AssessorLoad]],
-    last_used: dict[tuple[str, str], int],
-) -> str | None:
+    loads: Dict[str, Dict[str, AssessorLoad]],
+    last_used: Dict[Tuple[str, str], int],
+) -> Optional[str]:
     candidates = []
     for assessor in assessors:
         key = normalize_name(assessor)
@@ -102,7 +103,7 @@ def _skipped_record(need: GlfAssessmentNeed) -> AllocationRecord:
     )
 
 
-def _unallocated_record(need: GlfAssessmentNeed, reason: str, entry: RosterEntry | None = None) -> AllocationRecord:
+def _unallocated_record(need: GlfAssessmentNeed, reason: str, entry: Optional[RosterEntry] = None) -> AllocationRecord:
     return AllocationRecord(
         date=entry.date if entry else "",
         assessee_name=need.assessee_name,
@@ -117,10 +118,10 @@ def _unallocated_record(need: GlfAssessmentNeed, reason: str, entry: RosterEntry
     )
 
 
-def allocate_assessments(needs: list[GlfAssessmentNeed], roster: RosterData) -> list[AllocationRecord]:
-    records: list[AllocationRecord] = []
-    loads: dict[str, dict[str, AssessorLoad]] = defaultdict(lambda: defaultdict(AssessorLoad))
-    last_used: dict[tuple[str, str], int] = {}
+def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> List[AllocationRecord]:
+    records: List[AllocationRecord] = []
+    loads: DefaultDict[str, DefaultDict[str, AssessorLoad]] = defaultdict(lambda: defaultdict(AssessorLoad))
+    last_used: Dict[Tuple[str, str], int] = {}
     usage_counter = 0
 
     for need in needs:
@@ -146,7 +147,7 @@ def allocate_assessments(needs: list[GlfAssessmentNeed], roster: RosterData) -> 
             )
             continue
 
-        allocation: AllocationRecord | None = None
+        allocation: Optional[AllocationRecord] = None
         last_entry = compatible_entries[0]
         capacity_blocked = False
         repeated_fallback = False

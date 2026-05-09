@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import DefaultDict, Dict, List, Tuple
 
 from app.models.allocation import RosterData, RosterEntry
 from app.utils.colours import classify_location_from_fill, is_green_fill, is_white_fill, is_yellow_fill
@@ -12,9 +13,9 @@ from app.utils.names import names_prefix_match, normalize_name
 SKIP_ROSTER_VALUES = {"", "glf", "x", "off", "al", "mc", "leave", "hl", "ops"}
 
 
-def _find_date_columns(ws) -> tuple[int, dict[int, str]]:
+def _find_date_columns(ws) -> Tuple[int, Dict[int, str]]:
     best_row = 0
-    best_dates: dict[int, str] = {}
+    best_dates: Dict[int, str] = {}
     for row_index in range(1, min(ws.max_row, 15) + 1):
         dates = {
             col: format_date(ws.cell(row_index, col).value)
@@ -36,15 +37,15 @@ def _is_schedule_value(value: object) -> bool:
     return bool(text)
 
 
-def _add_entry(entries: dict[str, list[RosterEntry]], name: str, entry: RosterEntry) -> None:
+def _add_entry(entries: Dict[str, List[RosterEntry]], name: str, entry: RosterEntry) -> None:
     entries[normalize_name(name)].append(entry)
 
 
-def _extract_ward_names(value: object) -> list[str]:
+def _extract_ward_names(value: object) -> List[str]:
     if value is None:
         return []
     text = str(value).replace("\xa0", " ").strip()
-    names: list[str] = []
+    names: List[str] = []
     for part in text.replace("{", "\n").replace("}", "\n").splitlines():
         name = part.strip()
         if _is_schedule_value(name):
@@ -52,7 +53,7 @@ def _extract_ward_names(value: object) -> list[str]:
     return names
 
 
-def _parse_primary_roster_sheet(ws, available: dict[str, list[str]], entries: dict[str, list[RosterEntry]]) -> None:
+def _parse_primary_roster_sheet(ws, available: Dict[str, List[str]], entries: Dict[str, List[RosterEntry]]) -> None:
     date_row, date_columns = _find_date_columns(ws)
     for row_index in range(date_row + 1, ws.max_row + 1):
         name_value = ws.cell(row_index, 1).value
@@ -83,7 +84,7 @@ def _parse_primary_roster_sheet(ws, available: dict[str, list[str]], entries: di
             )
 
 
-def _parse_ward_roster_sheet(ws, entries: dict[str, list[RosterEntry]]) -> None:
+def _parse_ward_roster_sheet(ws, entries: Dict[str, List[RosterEntry]]) -> None:
     date_row, date_columns = _find_date_columns(ws)
     for row_index in range(date_row + 1, ws.max_row + 1):
         for col, date_text in date_columns.items():
@@ -108,8 +109,8 @@ def _parse_ward_roster_sheet(ws, entries: dict[str, list[RosterEntry]]) -> None:
 def parse_roster(workbook) -> RosterData:
     if len(workbook.worksheets) < 2:
         raise AppError("The roster workbook must contain at least two worksheets.")
-    available: dict[str, list[str]] = defaultdict(list)
-    entries: dict[str, list[RosterEntry]] = defaultdict(list)
+    available: DefaultDict[str, List[str]] = defaultdict(list)
+    entries: DefaultDict[str, List[RosterEntry]] = defaultdict(list)
 
     _parse_primary_roster_sheet(workbook.worksheets[0], available, entries)
     _parse_ward_roster_sheet(workbook.worksheets[1], entries)
@@ -124,12 +125,12 @@ def parse_roster(workbook) -> RosterData:
     return RosterData(dict(available), dict(entries))
 
 
-def find_roster_entries(roster: RosterData, assessee_name: str) -> list[RosterEntry]:
+def find_roster_entries(roster: RosterData, assessee_name: str) -> List[RosterEntry]:
     normalized = normalize_name(assessee_name)
     exact = roster.assessee_entries_by_name.get(normalized)
     if exact:
         return exact
-    candidates: list[list[RosterEntry]] = []
+    candidates: List[List[RosterEntry]] = []
     for roster_name, entries in roster.assessee_entries_by_name.items():
         if names_prefix_match(assessee_name, roster_name):
             candidates.append(entries)
