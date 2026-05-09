@@ -35,3 +35,21 @@ Open local app:
 http://127.0.0.1:5173
 ```
 
+## Easy Start For Non-Programmers
+
+On Windows, double-click:
+
+```text
+Run GLF Scheduler.bat
+```
+
+The launcher will:
+
+- create the Python virtual environment if it is missing
+- install backend Python packages
+- install frontend packages if needed
+- start the backend and frontend in separate windows
+- open the app at `http://127.0.0.1:5173`
+
+Keep the backend and frontend windows open while using the app. Close those windows when finished.
+
