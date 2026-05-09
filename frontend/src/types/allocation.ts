@@ -27,6 +27,8 @@ export interface AllocationSummary {
   skipped: number;
 }
 
+export type ResultsFilter = "allocated" | "unallocated" | "skipped";
+
 export interface GenerateAllocationResponse {
   success: boolean;
   summary: AllocationSummary;
