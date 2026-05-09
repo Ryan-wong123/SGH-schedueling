@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Dict, Optional
 from uuid import uuid4
 
 from starlette.background import BackgroundTask
@@ -17,7 +18,7 @@ from app.utils.errors import AppError
 router = APIRouter()
 
 
-def _cleanup_download(downloads: dict[str, Path], download_id: str, path: Path) -> None:
+def _cleanup_download(downloads: Dict[str, Path], download_id: str, path: Path) -> None:
     downloads.pop(download_id, None)
     try:
         path.unlink(missing_ok=True)
@@ -25,7 +26,7 @@ def _cleanup_download(downloads: dict[str, Path], download_id: str, path: Path) 
         pass
 
 
-def _validate_xlsx(upload: UploadFile | None, label: str) -> None:
+def _validate_xlsx(upload: Optional[UploadFile], label: str) -> None:
     if upload is None:
         raise AppError(f"Missing {label}.")
     if not upload.filename or Path(upload.filename).suffix.casefold() != ".xlsx":
@@ -33,7 +34,7 @@ def _validate_xlsx(upload: UploadFile | None, label: str) -> None:
 
 
 @router.get("/health")
-async def health() -> dict[str, str]:
+async def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 

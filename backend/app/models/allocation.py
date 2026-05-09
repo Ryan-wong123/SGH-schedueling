@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Dict, List, Literal, Optional, Tuple
 
 AssessmentType = Literal["Rx Check", "Dispensing", "Med Recon", "MiniCeX"]
 LocationType = Literal["Ward", "OPS", "Unknown"]
@@ -14,7 +14,7 @@ AllocationStatus = Literal[
     "Skipped - Unsupported Cell State",
 ]
 
-ASSESSMENT_TYPES: tuple[AssessmentType, ...] = ("Rx Check", "Dispensing", "Med Recon", "MiniCeX")
+ASSESSMENT_TYPES: Tuple[AssessmentType, ...] = ("Rx Check", "Dispensing", "Med Recon", "MiniCeX")
 REPEAT_AVOIDANCE_ASSESSMENTS = {"Med Recon", "MiniCeX"}
 
 
@@ -24,10 +24,10 @@ class GlfAssessmentNeed:
     assessment_type: AssessmentType
     original_glf_cell_reference: str
     needs_allocation: bool
-    status: AllocationStatus | None = None
+    status: Optional[AllocationStatus] = None
     reason: str = ""
     existing_allocation_history: str = ""
-    existing_assessors_for_row: tuple[str, ...] = field(default_factory=tuple)
+    existing_assessors_for_row: Tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
@@ -40,8 +40,8 @@ class RosterEntry:
 
 @dataclass(frozen=True)
 class RosterData:
-    available_assessors_by_date: dict[str, list[str]]
-    assessee_entries_by_name: dict[str, list[RosterEntry]]
+    available_assessors_by_date: Dict[str, List[str]]
+    assessee_entries_by_name: Dict[str, List[RosterEntry]]
 
 
 @dataclass
@@ -57,7 +57,7 @@ class AllocationRecord:
     original_glf_cell_reference: str
     existing_allocation_history: str
 
-    def to_api_dict(self) -> dict[str, str]:
+    def to_api_dict(self) -> Dict[str, str]:
         return {
             "date": self.date,
             "assesseeName": self.assessee_name,
@@ -71,7 +71,7 @@ class AllocationRecord:
             "existingAllocationHistory": self.existing_allocation_history,
         }
 
-    def row_values(self) -> list[str]:
+    def row_values(self) -> List[str]:
         return [
             self.date,
             self.assessee_name,
