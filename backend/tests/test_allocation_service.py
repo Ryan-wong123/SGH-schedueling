@@ -71,6 +71,40 @@ def test_repeat_assessor_avoidance_for_med_recon() -> None:
     assert records[0].assigned_assessor == "Melissa Wu"
 
 
+def test_ward_allocation_uses_ward_assessors_for_same_date() -> None:
+    roster = RosterData(
+        available_assessors_by_date={"15/04/26": ["OPS Assessor", "Ward Assessor"]},
+        assessee_entries_by_name={
+            "person": [RosterEntry("Person", "15/04/26", "Ward")],
+        },
+        available_assessors_by_date_location={
+            "15/04/26": {
+                "OPS": ["OPS Assessor"],
+                "Ward": ["Ward Assessor"],
+            }
+        },
+    )
+    records = allocate_assessments([make_need("Person", "MiniCeX")], roster)
+    assert records[0].status == "Allocated"
+    assert records[0].assigned_assessor == "Ward Assessor"
+
+
+def test_ops_allocation_does_not_use_ward_assessors() -> None:
+    roster = RosterData(
+        available_assessors_by_date={"15/04/26": ["Ward Assessor"]},
+        assessee_entries_by_name={
+            "person": [RosterEntry("Person", "15/04/26", "OPS")],
+        },
+        available_assessors_by_date_location={
+            "15/04/26": {
+                "Ward": ["Ward Assessor"],
+            }
+        },
+    )
+    records = allocate_assessments([make_need("Person", "Dispensing")], roster)
+    assert records[0].status == "Unallocated"
+
+
 def test_summary_counts_skipped() -> None:
     skipped = GlfAssessmentNeed(
         assessee_name="Person",

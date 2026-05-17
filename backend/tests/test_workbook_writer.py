@@ -1,5 +1,5 @@
 from openpyxl import Workbook
-from openpyxl.styles import PatternFill
+from openpyxl.styles import Color, PatternFill
 
 from app.models.allocation import AllocationRecord
 from app.services.workbook_writer import add_generated_allocation_sheet, save_workbook_to_bytes
@@ -36,6 +36,82 @@ def test_generated_sheet_copies_progress_format_and_writes_allocations() -> None
     assert wb["Generated Allocation"]["G2"].value == "Assessor 15/04/26"
     assert wb["Generated Allocation"]["G2"].fill.fgColor.rgb == "FFE9B2FA"
     assert save_workbook_to_bytes(wb).startswith(b"PK")
+
+
+def test_generated_sheet_clears_black_passed_cells_and_does_not_write_allocations_to_them() -> None:
+    wb = Workbook()
+    wb.active.title = "First"
+    progress = wb.create_sheet("Original Progress")
+    progress["A1"] = "GLF Assessment 2026 Cycle 1"
+    progress["G1"] = "Rx check"
+    progress["A2"] = "Person"
+    progress["G2"] = "Old Assessor 01/01/26"
+    progress["G2"].fill = PatternFill(fill_type="solid", fgColor="FF000000")
+    progress["H2"].fill = PatternFill(fill_type="solid", fgColor="FF000000")
+
+    records = [
+        AllocationRecord(
+            date="",
+            assessee_name="Person",
+            assessment_type="Rx Check",
+            assessee_location="",
+            assigned_assessor="",
+            assessor_glf_availability_date="",
+            status="Skipped - Already Passed",
+            reason="Black-filled cell",
+            original_glf_cell_reference="G2",
+            existing_allocation_history="",
+        ),
+        AllocationRecord(
+            date="15/04/26",
+            assessee_name="Person",
+            assessment_type="Dispensing",
+            assessee_location="OPS",
+            assigned_assessor="Assessor",
+            assessor_glf_availability_date="15/04/26",
+            status="Allocated",
+            reason="",
+            original_glf_cell_reference="H2",
+            existing_allocation_history="",
+        ),
+    ]
+
+    add_generated_allocation_sheet(wb, records)
+
+    generated = wb["Generated Allocation"]
+    assert generated["G2"].value is None
+    assert generated["H2"].value is None
+    assert generated["G2"].fill.fgColor.rgb == "FF000000"
+    assert generated["H2"].fill.fgColor.rgb == "FF000000"
+
+
+def test_generated_sheet_does_not_write_allocations_to_theme_black_cells() -> None:
+    wb = Workbook()
+    wb.active.title = "First"
+    progress = wb.create_sheet("Original Progress")
+    progress["A1"] = "GLF Assessment 2026 Cycle 1"
+    progress["G1"] = "Rx check"
+    progress["A2"] = "Person"
+    progress["G2"].fill = PatternFill(fill_type="solid", fgColor=Color(theme=1, tint=0))
+
+    records = [
+        AllocationRecord(
+            date="15/04/26",
+            assessee_name="Person",
+            assessment_type="Rx Check",
+            assessee_location="Ward",
+            assigned_assessor="Assessor",
+            assessor_glf_availability_date="15/04/26",
+            status="Allocated",
+            reason="",
+            original_glf_cell_reference="G2",
+            existing_allocation_history="",
+        )
+    ]
+
+    add_generated_allocation_sheet(wb, records)
+
+    assert wb["Generated Allocation"]["G2"].value is None
 
 
 def test_generated_sheet_name_increments() -> None:

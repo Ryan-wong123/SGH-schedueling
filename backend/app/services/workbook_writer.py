@@ -4,6 +4,7 @@ from io import BytesIO
 from typing import List
 
 from app.models.allocation import AllocationRecord
+from app.utils.colours import is_black_fill
 
 
 def unique_generated_sheet_name(workbook) -> str:
@@ -35,8 +36,14 @@ def add_generated_allocation_sheet(workbook, records: List[AllocationRecord]) ->
     _move_sheet_to_index(workbook, ws, 1)
 
     for record in records:
-        if record.status == "Allocated" and record.original_glf_cell_reference:
-            ws[record.original_glf_cell_reference].value = _allocation_cell_text(record)
+        if not record.original_glf_cell_reference:
+            continue
+        cell = ws[record.original_glf_cell_reference]
+        if record.status == "Skipped - Already Passed" or is_black_fill(cell):
+            cell.value = None
+            continue
+        if record.status == "Allocated":
+            cell.value = _allocation_cell_text(record)
     return sheet_name
 
 
