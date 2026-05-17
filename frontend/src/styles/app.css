@@ -131,44 +131,23 @@ button:disabled {
   margin-bottom: 16px;
 }
 
-.summary-tabs {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 1fr));
-  gap: 10px;
-  width: min(520px, 100%);
-}
-
-.summary-tab {
+.allocated-summary {
   border: 1px solid #d5e0e7;
   border-radius: 8px;
   padding: 12px;
   background: #f7fafc;
   color: #172026;
-  cursor: pointer;
-  text-align: left;
+  min-width: 160px;
 }
 
-.summary-tab:hover {
-  border-color: #7fa1b3;
-}
-
-.summary-tab[aria-selected="true"] {
-  background: #24485a;
-  border-color: #24485a;
-  color: #ffffff;
-}
-
-.summary-tab span {
+.allocated-summary span {
   display: block;
   font-size: 0.85rem;
   font-weight: 500;
-}
-
-.summary-tab[aria-selected="false"] span {
   color: #5c7280;
 }
 
-.summary-tab strong {
+.allocated-summary strong {
   display: block;
   font-size: 1.7rem;
 }

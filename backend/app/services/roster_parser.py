@@ -11,7 +11,7 @@ from app.utils.errors import AppError
 from app.utils.names import names_prefix_match, normalize_name
 
 
-SKIP_ROSTER_VALUES = {"", "glf", "x", "off", "al", "mc", "leave", "hl", "ops"}
+SKIP_ROSTER_VALUES = {"", "glf", "x", "off", "al", "mc", "leave", "hl", "ops", "floater"}
 BRACED_TEXT_PATTERN = re.compile(r"\{([^{}]+)\}")
 
 
@@ -34,7 +34,8 @@ def _find_date_columns(ws) -> Tuple[int, Dict[int, str]]:
 
 def _is_schedule_value(value: object) -> bool:
     text = str(value).replace("\xa0", " ").strip().casefold() if value is not None else ""
-    if text in SKIP_ROSTER_VALUES:
+    marker = re.sub(r"[^a-z0-9]+", "", text)
+    if text in SKIP_ROSTER_VALUES or marker in SKIP_ROSTER_VALUES or "floater" in marker:
         return False
     return bool(text)
 
