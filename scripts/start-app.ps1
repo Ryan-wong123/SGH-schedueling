@@ -21,6 +21,18 @@ function Test-PortOpen {
         Where-Object { $_.State -eq "Listen" })
 }
 
+function Start-ServiceWindow {
+    param(
+        [string]$WorkingDirectory,
+        [string]$Command
+    )
+
+    Start-Process cmd.exe -ArgumentList @(
+        "/k",
+        "cd /d `"$WorkingDirectory`" && $Command"
+    )
+}
+
 Write-Host "Starting GLF Assessment Scheduler..." -ForegroundColor Cyan
 
 if (-not (Test-Path $BackendDir)) {
@@ -75,12 +87,7 @@ if (Test-PortOpen 8000) {
 }
 else {
     Write-Host "Starting backend on http://127.0.0.1:8000 ..." -ForegroundColor Green
-    Start-Process powershell -ArgumentList @(
-        "-NoProfile",
-        "-NoExit",
-        "-Command",
-        "Set-Location '$BackendDir'; &'$VenvPython' -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
-    )
+    Start-ServiceWindow -WorkingDirectory $BackendDir -Command "`"$VenvPython`" -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
 }
 
 if (Test-PortOpen 5173) {
@@ -88,12 +95,7 @@ if (Test-PortOpen 5173) {
 }
 else {
     Write-Host "Starting frontend on $AppUrl ..." -ForegroundColor Green
-    Start-Process powershell -ArgumentList @(
-        "-NoProfile",
-        "-NoExit",
-        "-Command",
-        "Set-Location '$FrontendDir'; npm run dev -- --port 5173"
-    )
+    Start-ServiceWindow -WorkingDirectory $FrontendDir -Command "npm run dev"
 }
 
 if (-not $NoOpen) {
