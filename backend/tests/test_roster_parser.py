@@ -21,7 +21,7 @@ def build_roster_workbook() -> Workbook:
     ws["C6"].fill = PatternFill(fill_type="solid", fgColor="FF92D050")
     ward["B2"] = "15/04/26"
     ward["C2"] = "17/04/26"
-    ward["B3"] = "Fiona Yeo\n{Amanda Chua}"
+    ward["B3"] = "Fiona Yeo\n*floater*\n{Amanda Chua}"
     ward["B3"].fill = PatternFill(fill_type="solid", fgColor="FFFFFFFF")
     ward["C3"] = "Amanda Chua"
     ward["C3"].fill = PatternFill(fill_type="solid", fgColor="FFFBE2D5")

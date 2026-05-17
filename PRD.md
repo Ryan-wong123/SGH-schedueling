@@ -107,6 +107,7 @@ For Ward allocation, the system must use the second worksheet:
 - Only white-filled cells are used.
 - Names outside `{...}` are Ward assessors available on that date.
 - Names inside `{...}` are Ward assessees available on that date.
+- `floater` / `*floater*` text is a roster placeholder and must not be treated as an assessor or assessee.
 - Non-white cells in the second worksheet must be ignored for Ward allocation.
 
 ### 4.3 Location Colour Rule

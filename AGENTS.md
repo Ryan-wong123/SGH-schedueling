@@ -155,6 +155,7 @@ The system must inspect cell fill colours, not only cell values.
 - In the second worksheet, use only white cells for Ward date/location data.
 - In white Ward cells, names outside `{...}` identify Ward assessors available on that date.
 - In white Ward cells, names inside `{...}` identify Ward assessees available on that date.
+- Ignore `floater` / `*floater*` roster placeholders.
 - Ignore non-white cells in the second worksheet for Ward allocation.
 - Green cells in the first worksheet indicate OPS.
 - Yellow GLF cells in the first worksheet identify assessors available for non-ward allocation.
