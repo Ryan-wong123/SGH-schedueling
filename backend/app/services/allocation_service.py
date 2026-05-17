@@ -88,6 +88,16 @@ def _select_assessor(
     )[0]
 
 
+def _available_assessors_for_entry(roster: RosterData, entry: RosterEntry) -> List[str]:
+    by_location = roster.available_assessors_by_date_location.get(entry.date, {})
+    if by_location:
+        return by_location.get(entry.location, [])
+    assessors = by_location.get(entry.location)
+    if assessors is not None:
+        return assessors
+    return roster.available_assessors_by_date.get(entry.date, [])
+
+
 def _skipped_record(need: GlfAssessmentNeed) -> AllocationRecord:
     return AllocationRecord(
         date="",
@@ -154,7 +164,7 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
 
         for entry in compatible_entries:
             last_entry = entry
-            available = roster.available_assessors_by_date.get(entry.date, [])
+            available = _available_assessors_for_entry(roster, entry)
             if not available:
                 continue
 

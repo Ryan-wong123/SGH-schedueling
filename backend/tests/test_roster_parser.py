@@ -28,9 +28,15 @@ def build_roster_workbook() -> Workbook:
     return wb
 
 
-def test_roster_parser_uses_first_sheet_for_glf_and_second_sheet_for_white_wards() -> None:
+def test_roster_parser_uses_second_sheet_white_cells_for_ward_assessors_and_assessees() -> None:
     roster = parse_roster(build_roster_workbook())
-    assert roster.available_assessors_by_date == {"15/04/26": ["Genevieve Subur"]}
+    assert roster.available_assessors_by_date == {"15/04/26": ["Fiona Yeo", "Genevieve Subur"]}
+    assert roster.available_assessors_by_date_location == {
+        "15/04/26": {
+            "OPS": ["Genevieve Subur"],
+            "Ward": ["Fiona Yeo"],
+        }
+    }
     entries = find_roster_entries(roster, "Amanda Chua Jing Yi")
     assert sorted((entry.date, entry.location) for entry in entries) == [
         ("15/04/26", "Ward"),

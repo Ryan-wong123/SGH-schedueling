@@ -53,8 +53,8 @@ The system must:
 1. Accept both Excel workbook uploads.
 2. Accept the GLF workbook password from the user.
 3. Read the password-protected GLF workbook.
-4. Use only the first worksheet of the Roster Ward Allocation Workbook.
-5. Ignore the second worksheet of the Roster Ward Allocation Workbook.
+4. Use the first worksheet of the Roster Ward Allocation Workbook for OPS entries and non-ward GLF availability.
+5. Use the second worksheet of the Roster Ward Allocation Workbook for Ward date/location allocation.
 6. Use the second worksheet of the GLF Assessment Workbook as the current assessment progress worksheet.
 7. Allocate assessors only for blank assessment cells in these columns:
    - Rx Check
@@ -150,10 +150,14 @@ The system must inspect cell fill colours, not only cell values.
 
 ### Roster Workbook
 
-- Use only the first worksheet.
-- Yellow GLF cells identify full-day available assessors.
-- Green cells indicate OPS.
-- White, purple, orange, and beige cells indicate Ward.
+- Use the first worksheet for OPS entries and GLF availability outside Ward allocation.
+- Use the second worksheet for Ward allocation.
+- In the second worksheet, use only white cells for Ward date/location data.
+- In white Ward cells, names outside `{...}` identify Ward assessors available on that date.
+- In white Ward cells, names inside `{...}` identify Ward assessees available on that date.
+- Ignore non-white cells in the second worksheet for Ward allocation.
+- Green cells in the first worksheet indicate OPS.
+- Yellow GLF cells in the first worksheet identify assessors available for non-ward allocation.
 
 Because Excel colours may appear as RGB, indexed, or theme colours, create tolerant helper functions for colour detection.
 
@@ -197,6 +201,10 @@ The output workbook must:
 5. If the name already exists, use `Generated Allocation 2`, `Generated Allocation 3`, etc.
 6. Not overwrite or delete the original second worksheet.
 7. Preserve data, formulas, formatting, and colours as much as possible.
+8. Copy the original GLF progress worksheet as the generated worksheet.
+9. Write assessor/date text only into successfully allocated copied assessment cells.
+10. Do not write skipped or unallocated records into copied assessment cells.
+11. Clear copied values from black-filled passed cells while preserving the black fill.
 
 ---
 
@@ -227,7 +235,10 @@ When implementing or modifying the system, add or update tests for:
 - Workbook password handling
 - GLF second worksheet parsing
 - Roster first worksheet parsing
+- Roster second worksheet Ward parsing
+- Ward assessor selection from second worksheet white cells
 - Cell colour classification
+- Theme-black GLF cell classification
 - Assessment cell status classification
 - Capacity rules
 - MiniCeX limit

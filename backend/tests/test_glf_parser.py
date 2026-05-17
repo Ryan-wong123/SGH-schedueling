@@ -1,7 +1,7 @@
 from io import BytesIO
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.styles import PatternFill
+from openpyxl.styles import Color, PatternFill
 
 from app.services.excel_reader import WRONG_PASSWORD_MESSAGE, load_glf_workbook_from_bytes
 from app.services.glf_parser import parse_glf_progress
@@ -49,6 +49,18 @@ def test_glf_parser_uses_second_sheet_and_classifies_cells() -> None:
     assert by_cell["I3"].status == "Skipped - Already Passed"
     assert by_cell["J3"].needs_allocation
     assert all(need.assessment_type not in {"CBD", "PA"} for need in needs)
+
+
+def test_glf_parser_treats_theme_dark_cells_as_already_passed() -> None:
+    wb = build_glf_workbook()
+    ws = wb["Progress"]
+    ws["G3"].fill = PatternFill(fill_type="solid", fgColor=Color(theme=1, tint=0))
+
+    needs = parse_glf_progress(wb)
+    by_cell = {need.original_glf_cell_reference: need for need in needs}
+
+    assert by_cell["G3"].status == "Skipped - Already Passed"
+    assert not by_cell["G3"].needs_allocation
 
 
 def test_glf_parser_stops_before_legend_block() -> None:

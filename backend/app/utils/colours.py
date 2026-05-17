@@ -63,6 +63,12 @@ def is_white_fill(cell) -> bool:
 
 
 def is_black_fill(cell) -> bool:
+    fill = getattr(cell, "fill", None)
+    if fill is None or fill.fill_type is None:
+        return False
+    color = fill.fgColor
+    if color is not None and color.type == "theme" and color.theme == 1 and color.tint == 0:
+        return True
     rgb = _rgb_tuple(cell)
     return bool(rgb and max(rgb) <= 45)
 
