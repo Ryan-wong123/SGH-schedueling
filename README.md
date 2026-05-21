@@ -53,3 +53,21 @@ The launcher will:
 
 Keep the backend and frontend windows open while using the app. Close those windows when finished.
 
+## Build A Standalone Windows `.exe`
+
+Run this on the build computer:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-exe.ps1
+```
+
+The build computer needs Python and Node.js/npm installed. The computers that run the finished app do not.
+
+The finished executable is created at:
+
+```text
+dist\GLF Assessment Scheduler.exe
+```
+
+Copy that `.exe` to another Windows computer and double-click it. It starts the local scheduler server and opens the app in the browser.
+
