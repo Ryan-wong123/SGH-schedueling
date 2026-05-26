@@ -301,6 +301,7 @@ Responsibilities:
   - `Generated Allocation 2`
   - `Generated Allocation 3`
 - Write allocation records into the new worksheet.
+- Highlight successfully allocated copied assessment cells with a blue fill after writing assessor/date text.
 - Save the updated workbook for download.
 
 ---

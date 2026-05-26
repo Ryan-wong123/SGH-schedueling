@@ -531,6 +531,7 @@ The generated worksheet should be a copy of the original GLF progress worksheet.
 The system should write allocation results directly into the copied assessment cells:
 
 - For `Allocated` records, write `Assessor Date` into the original GLF cell reference on the copied worksheet.
+- Highlight copied cells written for `Allocated` records with a blue fill.
 - For `Skipped - Already Passed` records, leave the copied cell black-filled and clear any copied text value.
 - For `Skipped - Already Allocated` records, preserve the existing copied assessor/date text.
 - For `Unallocated` records, leave the copied cell blank.
@@ -983,9 +984,10 @@ At minimum, test:
 19. Generated worksheet name increments if `Generated Allocation` already exists.
 20. Theme-black GLF cells are treated as black-filled passed cells.
 21. Generated worksheet clears copied text from black-filled passed cells.
-22. Preview records include the GLF section header beside the assessee.
-23. Preview records show Ward locations with the ward label in brackets when available.
-24. Output workbook can be downloaded.
+22. Generated worksheet highlights newly allocated cells in blue.
+23. Preview records include the GLF section header beside the assessee.
+24. Preview records show Ward locations with the ward label in brackets when available.
+25. Output workbook can be downloaded.
 
 ---
 
@@ -1034,7 +1036,8 @@ The project is complete when:
 19. The system outputs the full updated GLF workbook for download.
 20. The generated worksheet is a copied progress worksheet with assessor/date values written only into allocated copied cells.
 21. The generated worksheet preserves black-filled passed cells and clears copied text from those cells.
-22. The frontend shows allocation summary and preview.
-23. The frontend preview includes the GLF section header beside each assessee.
-24. The frontend preview shows Ward locations with the ward label in brackets when available.
-25. Errors are shown clearly to the user.
+22. The generated worksheet highlights newly allocated cells in blue.
+23. The frontend shows allocation summary and preview.
+24. The frontend preview includes the GLF section header beside each assessee.
+25. The frontend preview shows Ward locations with the ward label in brackets when available.
+26. Errors are shown clearly to the user.

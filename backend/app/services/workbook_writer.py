@@ -3,8 +3,12 @@ from __future__ import annotations
 from io import BytesIO
 from typing import List
 
+from openpyxl.styles import PatternFill
+
 from app.models.allocation import AllocationRecord
 from app.utils.colours import is_black_fill
+
+ALLOCATED_CELL_FILL = PatternFill(fill_type="solid", fgColor="FF00B0F0")
 
 
 def unique_generated_sheet_name(workbook) -> str:
@@ -44,6 +48,7 @@ def add_generated_allocation_sheet(workbook, records: List[AllocationRecord]) ->
             continue
         if record.status == "Allocated":
             cell.value = _allocation_cell_text(record)
+            cell.fill = ALLOCATED_CELL_FILL
     return sheet_name
 
 

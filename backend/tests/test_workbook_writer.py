@@ -2,7 +2,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Color, PatternFill
 
 from app.models.allocation import AllocationRecord
-from app.services.workbook_writer import add_generated_allocation_sheet, save_workbook_to_bytes
+from app.services.workbook_writer import ALLOCATED_CELL_FILL, add_generated_allocation_sheet, save_workbook_to_bytes
 
 
 def test_generated_sheet_copies_progress_format_and_writes_allocations() -> None:
@@ -34,7 +34,7 @@ def test_generated_sheet_copies_progress_format_and_writes_allocations() -> None
     assert wb["Original Progress"]["G2"].value is None
     assert wb["Generated Allocation"]["A1"].value == "GLF Assessment 2026 Cycle 1"
     assert wb["Generated Allocation"]["G2"].value == "Assessor 15/04/26"
-    assert wb["Generated Allocation"]["G2"].fill.fgColor.rgb == "FFE9B2FA"
+    assert wb["Generated Allocation"]["G2"].fill.fgColor.rgb == ALLOCATED_CELL_FILL.fgColor.rgb
     assert save_workbook_to_bytes(wb).startswith(b"PK")
 
 
