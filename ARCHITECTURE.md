@@ -246,14 +246,16 @@ Each item should represent one assessee-assessment pair that is either allocatab
 
 Responsibilities:
 
-- Read only the first worksheet of the Roster Ward Allocation Workbook.
-- Ignore all other worksheets.
+- Read the first worksheet of the Roster Ward Allocation Workbook for OPS entries and non-ward GLF availability.
+- Read the second worksheet of the Roster Ward Allocation Workbook for Ward allocation.
 - Detect assessors with GLF availability.
 - Detect assessee schedule date and location.
 - Classify roster cell colours:
   - Yellow = GLF available assessor
   - Green = OPS
-  - White / Purple / Orange / Beige = Ward
+  - White cells in worksheet 2 = Ward
+  - Non-white cells in worksheet 2 = ignored for Ward allocation
+- Preserve the ward location label from column A for Ward preview output.
 - Return structured roster data.
 
 Expected output:
@@ -266,6 +268,7 @@ This should include:
 
 - Available assessors by date
 - Assessee locations by date
+- Ward location labels for Ward assessees where available
 - Assessee roster entries
 
 ---
@@ -279,7 +282,7 @@ Responsibilities:
 - Enforce assessor capacity rules.
 - Run round-robin assessor selection.
 - Avoid repeated assessors for MiniCeX and Med Recon where possible.
-- Produce allocation records.
+- Produce allocation records, including GLF section headers and display-ready locations such as `Ward (42A (1-8) RS-2)`.
 
 This module is the core business logic layer.
 
@@ -386,6 +389,8 @@ Responsibilities:
 Responsibilities:
 
 - Display allocation preview rows.
+- Show the GLF section header beside the assessee.
+- Show Ward locations with the ward label in brackets when available.
 - Show status and reasons.
 - Allow user to inspect unallocated records.
 
@@ -441,6 +446,7 @@ AllocationStatus = Literal[
 class AllocationRecord:
     date: str
     assessee_name: str
+    glf_section_header: str
     assessment_type: str
     assessee_location: str
     assigned_assessor: str
@@ -495,6 +501,22 @@ The generated worksheet must contain these columns:
 | H | Reason if Unallocated or Skipped |
 | I | Original GLF Cell Reference |
 | J | Existing Allocation History |
+
+The website preview table should show a display-oriented subset of the allocation record fields:
+
+| Column | Field |
+|---|---|
+| Date | Date |
+| Assessee | Assessee Name |
+| Header | GLF Section Header |
+| Assessment | Assessment Type |
+| Location | Assessee Location |
+| Assessor | Assigned Assessor |
+| Status | Status |
+| Reason | Reason or Existing Allocation History |
+| Cell | Original GLF Cell Reference |
+
+For Ward allocations, `Assessee Location` should include the ward label in brackets when it is available from the roster second worksheet row heading, for example `Ward (42A (1-8) RS-2)`. OPS allocations should display as `OPS`.
 
 ---
 
