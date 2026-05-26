@@ -70,6 +70,7 @@ def parse_glf_progress(workbook) -> List[GlfAssessmentNeed]:
     ws = workbook.worksheets[1]
     header_row, assessment_columns = _find_assessment_columns(ws)
     needs: List[GlfAssessmentNeed] = []
+    current_section_header = ""
 
     for row_index in range(header_row + 1, ws.max_row + 1):
         name_cell = ws.cell(row_index, 1)
@@ -77,6 +78,8 @@ def parse_glf_progress(workbook) -> List[GlfAssessmentNeed]:
         if _is_end_marker(assessee_name):
             break
         if _is_section_header(assessee_name):
+            if assessee_name:
+                current_section_header = assessee_name
             continue
 
         row_has_context = any(ws.cell(row_index, col).value not in (None, "") for col in range(2, 13))
@@ -101,6 +104,7 @@ def parse_glf_progress(workbook) -> List[GlfAssessmentNeed]:
                         assessment_type=assessment,
                         original_glf_cell_reference=cell_ref,
                         needs_allocation=False,
+                        glf_section_header=current_section_header,
                         status="Skipped - Already Passed",
                         reason="Black-filled cell",
                         existing_assessors_for_row=tuple(existing_for_row),
@@ -113,6 +117,7 @@ def parse_glf_progress(workbook) -> List[GlfAssessmentNeed]:
                         assessment_type=assessment,
                         original_glf_cell_reference=cell_ref,
                         needs_allocation=False,
+                        glf_section_header=current_section_header,
                         status="Skipped - Already Allocated",
                         reason="Existing allocation found",
                         existing_allocation_history=existing_history,
@@ -126,6 +131,7 @@ def parse_glf_progress(workbook) -> List[GlfAssessmentNeed]:
                         assessment_type=assessment,
                         original_glf_cell_reference=cell_ref,
                         needs_allocation=False,
+                        glf_section_header=current_section_header,
                         status="Skipped - Unsupported Cell State",
                         reason="Blank red-filled assessment cell is not automatically allocatable",
                         existing_assessors_for_row=tuple(existing_for_row),
@@ -138,6 +144,7 @@ def parse_glf_progress(workbook) -> List[GlfAssessmentNeed]:
                         assessment_type=assessment,
                         original_glf_cell_reference=cell_ref,
                         needs_allocation=True,
+                        glf_section_header=current_section_header,
                         existing_assessors_for_row=tuple(existing_for_row),
                     )
                 )

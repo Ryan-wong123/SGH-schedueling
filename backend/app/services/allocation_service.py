@@ -102,6 +102,7 @@ def _skipped_record(need: GlfAssessmentNeed) -> AllocationRecord:
     return AllocationRecord(
         date="",
         assessee_name=need.assessee_name,
+        glf_section_header=need.glf_section_header,
         assessment_type=need.assessment_type,
         assessee_location="",
         assigned_assessor="",
@@ -117,6 +118,7 @@ def _unallocated_record(need: GlfAssessmentNeed, reason: str, entry: Optional[Ro
     return AllocationRecord(
         date=entry.date if entry else "",
         assessee_name=need.assessee_name,
+        glf_section_header=need.glf_section_header,
         assessment_type=need.assessment_type,
         assessee_location=entry.location if entry else "",
         assigned_assessor="",
@@ -202,6 +204,7 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
             allocation = AllocationRecord(
                 date=entry.date,
                 assessee_name=need.assessee_name,
+                glf_section_header=need.glf_section_header,
                 assessment_type=need.assessment_type,
                 assessee_location=entry.location,
                 assigned_assessor=assessor,
