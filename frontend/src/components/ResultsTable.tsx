@@ -13,6 +13,7 @@ export function ResultsTable({ records }: Props) {
           <tr>
             <th>Date</th>
             <th>Assessee</th>
+            <th>Header</th>
             <th>Assessment</th>
             <th>Location</th>
             <th>Assessor</th>
@@ -26,6 +27,7 @@ export function ResultsTable({ records }: Props) {
             <tr key={`${record.originalGlfCellReference}-${index}`} className={record.status === "Unallocated" ? "warn" : ""}>
               <td>{record.date}</td>
               <td>{record.assesseeName}</td>
+              <td>{record.glfSectionHeader}</td>
               <td>{record.assessmentType}</td>
               <td>{record.assesseeLocation}</td>
               <td>{record.assignedAssessor}</td>

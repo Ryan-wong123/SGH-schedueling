@@ -11,6 +11,7 @@ export type AllocationStatus =
 export interface AllocationRecord {
   date: string;
   assesseeName: string;
+  glfSectionHeader: string;
   assessmentType: AssessmentType;
   assesseeLocation: LocationType;
   assignedAssessor: string;

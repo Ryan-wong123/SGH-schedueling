@@ -45,6 +45,7 @@ def test_glf_parser_uses_second_sheet_and_classifies_cells() -> None:
     needs = parse_glf_progress(build_glf_workbook())
     by_cell = {need.original_glf_cell_reference: need for need in needs}
     assert by_cell["G3"].needs_allocation
+    assert by_cell["G3"].glf_section_header == "Y1"
     assert by_cell["H3"].status == "Skipped - Already Allocated"
     assert by_cell["I3"].status == "Skipped - Already Passed"
     assert by_cell["J3"].needs_allocation

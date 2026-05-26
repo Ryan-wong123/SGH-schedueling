@@ -24,6 +24,7 @@ class GlfAssessmentNeed:
     assessment_type: AssessmentType
     original_glf_cell_reference: str
     needs_allocation: bool
+    glf_section_header: str = ""
     status: Optional[AllocationStatus] = None
     reason: str = ""
     existing_allocation_history: str = ""
@@ -57,11 +58,13 @@ class AllocationRecord:
     reason: str
     original_glf_cell_reference: str
     existing_allocation_history: str
+    glf_section_header: str = ""
 
     def to_api_dict(self) -> Dict[str, str]:
         return {
             "date": self.date,
             "assesseeName": self.assessee_name,
+            "glfSectionHeader": self.glf_section_header,
             "assessmentType": self.assessment_type,
             "assesseeLocation": self.assessee_location,
             "assignedAssessor": self.assigned_assessor,
@@ -76,6 +79,7 @@ class AllocationRecord:
         return [
             self.date,
             self.assessee_name,
+            self.glf_section_header,
             self.assessment_type,
             self.assessee_location,
             self.assigned_assessor,
