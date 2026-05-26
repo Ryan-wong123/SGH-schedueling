@@ -53,6 +53,12 @@ def _split_roster_names(text: str) -> List[str]:
     return names
 
 
+def _ward_location_text(value: object) -> str:
+    if value is None:
+        return ""
+    return " ".join(str(value).replace("\xa0", " ").split())
+
+
 def _extract_ward_cell_people(value: object) -> Tuple[List[str], List[str]]:
     if value is None:
         return [], []
@@ -117,6 +123,7 @@ def _parse_ward_roster_sheet(
 ) -> None:
     date_row, date_columns = _find_date_columns(ws)
     for row_index in range(date_row + 1, ws.max_row + 1):
+        ward_location = _ward_location_text(ws.cell(row_index, 1).value)
         for col, date_text in date_columns.items():
             cell = ws.cell(row_index, col)
             if not is_white_fill(cell):
@@ -135,6 +142,7 @@ def _parse_ward_roster_sheet(
                         date=date_text,
                         location="Ward",
                         source_cell=cell.coordinate,
+                        ward_location=ward_location,
                     ),
                 )
 

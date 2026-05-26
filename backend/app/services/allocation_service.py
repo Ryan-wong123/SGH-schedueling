@@ -98,6 +98,14 @@ def _available_assessors_for_entry(roster: RosterData, entry: RosterEntry) -> Li
     return roster.available_assessors_by_date.get(entry.date, [])
 
 
+def _display_location(entry: Optional[RosterEntry]) -> str:
+    if entry is None:
+        return ""
+    if entry.location == "Ward" and entry.ward_location:
+        return f"Ward ({entry.ward_location})"
+    return entry.location
+
+
 def _skipped_record(need: GlfAssessmentNeed) -> AllocationRecord:
     return AllocationRecord(
         date="",
@@ -120,7 +128,7 @@ def _unallocated_record(need: GlfAssessmentNeed, reason: str, entry: Optional[Ro
         assessee_name=need.assessee_name,
         glf_section_header=need.glf_section_header,
         assessment_type=need.assessment_type,
-        assessee_location=entry.location if entry else "",
+        assessee_location=_display_location(entry),
         assigned_assessor="",
         assessor_glf_availability_date="",
         status="Unallocated",
@@ -206,7 +214,7 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
                 assessee_name=need.assessee_name,
                 glf_section_header=need.glf_section_header,
                 assessment_type=need.assessment_type,
-                assessee_location=entry.location,
+                assessee_location=_display_location(entry),
                 assigned_assessor=assessor,
                 assessor_glf_availability_date=entry.date,
                 status="Allocated",

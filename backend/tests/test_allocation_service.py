@@ -75,7 +75,7 @@ def test_ward_allocation_uses_ward_assessors_for_same_date() -> None:
     roster = RosterData(
         available_assessors_by_date={"15/04/26": ["OPS Assessor", "Ward Assessor"]},
         assessee_entries_by_name={
-            "person": [RosterEntry("Person", "15/04/26", "Ward")],
+            "person": [RosterEntry("Person", "15/04/26", "Ward", ward_location="42A (1-8) RS-2")],
         },
         available_assessors_by_date_location={
             "15/04/26": {
@@ -87,6 +87,7 @@ def test_ward_allocation_uses_ward_assessors_for_same_date() -> None:
     records = allocate_assessments([make_need("Person", "MiniCeX")], roster)
     assert records[0].status == "Allocated"
     assert records[0].assigned_assessor == "Ward Assessor"
+    assert records[0].assessee_location == "Ward (42A (1-8) RS-2)"
 
 
 def test_ops_allocation_does_not_use_ward_assessors() -> None:

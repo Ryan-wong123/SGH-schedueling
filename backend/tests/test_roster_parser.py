@@ -23,6 +23,7 @@ def build_roster_workbook() -> Workbook:
     ward["C2"] = "17/04/26"
     ward["B3"] = "Fiona Yeo\n*floater*\n{Amanda Chua}"
     ward["B3"].fill = PatternFill(fill_type="solid", fgColor="FFFFFFFF")
+    ward["A3"] = "42A (1-8)\nRS-2"
     ward["C3"] = "Amanda Chua"
     ward["C3"].fill = PatternFill(fill_type="solid", fgColor="FFFBE2D5")
     return wb
@@ -42,3 +43,5 @@ def test_roster_parser_uses_second_sheet_white_cells_for_ward_assessors_and_asse
         ("15/04/26", "Ward"),
         ("16/04/26", "OPS"),
     ]
+    ward_entries = [entry for entry in entries if entry.location == "Ward"]
+    assert ward_entries[0].ward_location == "42A (1-8) RS-2"

@@ -37,6 +37,7 @@ class RosterEntry:
     date: str
     location: LocationType
     source_cell: str = ""
+    ward_location: str = ""
 
 
 @dataclass(frozen=True)
