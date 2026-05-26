@@ -2,12 +2,14 @@
 
 ## 1. System Overview
 
-The GLF Assessment Scheduler is a web application that processes two Excel files and generates a new allocation worksheet inside the GLF Assessment Workbook.
+The GLF Assessment Scheduler is a web application that processes two Excel files, generates a new allocation worksheet inside the GLF Assessment Workbook, and produces a separate new-allocation workbook that matches the website preview output.
 
 The system has two main parts:
 
-1. **Frontend** — React TypeScript application for uploading files, entering the password, previewing results, and downloading the generated workbook.
-2. **Backend** — FastAPI application for reading Excel files, parsing workbook data, running allocation logic, and returning the generated workbook.
+1. **Frontend** — React TypeScript application for uploading files, entering the password, previewing results, and downloading the generated workbooks.
+2. **Backend** — FastAPI application for reading Excel files, parsing workbook data, running allocation logic, and returning the generated workbooks.
+
+Both parts support two downloadable artifacts after generation: the full updated GLF workbook and a separate new-allocation workbook based on the website preview rows.
 
 ---
 
@@ -35,9 +37,9 @@ FastAPI Backend
    +--> Workbook writer
    |
    v
-Generated GLF Workbook
+Generated GLF Workbook + New-Allocation Workbook
    |
-   | download .xlsx
+   | download .xlsx files
    v
 User Browser
 ```
@@ -119,7 +121,7 @@ Main responsibilities:
 - Expose API endpoints.
 - Validate uploaded files.
 - Pass files to service layer.
-- Return JSON results and downloadable workbook.
+- Return JSON results and downloadable workbook IDs.
 
 Routes should stay thin. Do not put parsing or allocation logic in route handlers.
 
@@ -145,7 +147,7 @@ Purpose:
 
 - Accept uploaded workbooks and GLF password.
 - Process allocation.
-- Return summary, preview records, and download ID.
+- Return summary, preview records, full GLF workbook download ID, and new-allocation workbook download ID.
 
 Request:
 
@@ -172,7 +174,8 @@ Response:
     "skipped": 0
   },
   "records": [],
-  "download_id": "string"
+  "download_id": "string",
+  "preview_download_id": "string"
 }
 ```
 
@@ -186,6 +189,17 @@ Response:
 
 - File download.
 - Suggested filename: `GLF_Assessment_Generated_Allocation.xlsx`
+
+#### `GET /api/download-preview/{download_id}`
+
+Purpose:
+
+- Download the separate new-allocation `.xlsx` workbook that follows the website preview table.
+
+Response:
+
+- File download.
+- Suggested filename: `GLF_New_Allocation.xlsx`
 
 ---
 
@@ -303,6 +317,8 @@ Responsibilities:
 - Write allocation records into the new worksheet.
 - Highlight successfully allocated copied assessment cells with a blue fill after writing assessor/date text.
 - Save the updated workbook for download.
+- Create a separate new-allocation workbook from allocated preview records.
+- Use the preview columns `Date`, `Assessee`, `Header`, `Assessment`, `Location`, `Assessor`, `Status`, `Reason`, and `Cell`.
 
 ---
 
@@ -409,6 +425,7 @@ Responsibilities:
 healthCheck(): Promise<HealthResponse>
 generateAllocation(formData: FormData): Promise<GenerateAllocationResponse>
 downloadWorkbook(downloadId: string): void
+downloadPreviewWorkbook(downloadId: string): void
 ```
 
 ---
@@ -486,9 +503,9 @@ For each assessment need from the GLF workbook:
 
 ---
 
-## 9. Generated Worksheet Structure
+## 9. Preview Output Structure
 
-The generated worksheet must contain these columns:
+The API preview records and the separate new-allocation workbook use these fields:
 
 | Column | Field |
 |---|---|
@@ -518,6 +535,8 @@ The website preview table should show a display-oriented subset of the allocatio
 | Cell | Original GLF Cell Reference |
 
 For Ward allocations, `Assessee Location` should include the ward label in brackets when it is available from the roster second worksheet row heading, for example `Ward (42A (1-8) RS-2)`. OPS allocations should display as `OPS`.
+
+The separate new-allocation workbook should contain the same display-oriented preview columns and only successfully allocated rows. It is a separate `.xlsx` artifact and does not replace the full updated GLF workbook.
 
 ---
 
@@ -553,6 +572,7 @@ Test the logic in layers:
    - Generated worksheet insertion
    - Sheet-name incrementing
    - Workbook preservation
+   - Separate new-allocation workbook columns and allocated-only rows
 5. API tests
    - File validation
    - Wrong password handling

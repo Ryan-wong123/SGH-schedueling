@@ -7,6 +7,11 @@ Web app for generating GLF assessment allocation records from:
 
 The GLF workbook password is supplied by the user at upload time. Do not hardcode it in application logic.
 
+After processing, the app provides two downloads:
+
+- The full updated GLF workbook with a generated allocation worksheet inserted.
+- A separate `GLF_New_Allocation.xlsx` workbook matching the website preview output for newly allocated records.
+
 ## Backend
 
 ```powershell

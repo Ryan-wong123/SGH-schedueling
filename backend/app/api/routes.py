@@ -12,7 +12,11 @@ from app.services.allocation_service import allocate_assessments, summarize_reco
 from app.services.excel_reader import load_glf_workbook_from_bytes, load_roster_workbook_from_bytes
 from app.services.glf_parser import parse_glf_progress
 from app.services.roster_parser import parse_roster
-from app.services.workbook_writer import add_generated_allocation_sheet, save_workbook_to_bytes
+from app.services.workbook_writer import (
+    add_generated_allocation_sheet,
+    create_preview_allocation_workbook,
+    save_workbook_to_bytes,
+)
 from app.utils.errors import AppError
 
 router = APIRouter()
@@ -31,6 +35,16 @@ def _validate_xlsx(upload: Optional[UploadFile], label: str) -> None:
         raise AppError(f"Missing {label}.")
     if not upload.filename or Path(upload.filename).suffix.casefold() != ".xlsx":
         raise AppError(f"{label} must be an .xlsx file.")
+
+
+def _store_download(request: Request, contents: bytes) -> str:
+    download_id = str(uuid4())
+    downloads = request.app.state.downloads
+    output_dir = request.app.state.output_dir
+    output_path = output_dir / f"{download_id}.xlsx"
+    output_path.write_bytes(contents)
+    downloads[download_id] = output_path
+    return download_id
 
 
 @router.get("/health")
@@ -60,19 +74,17 @@ async def generate_allocation(
         records = allocate_assessments(needs, roster_data)
         add_generated_allocation_sheet(glf, records)
         output_bytes = save_workbook_to_bytes(glf)
+        preview_workbook_bytes = create_preview_allocation_workbook(records)
 
-        download_id = str(uuid4())
-        downloads = request.app.state.downloads
-        output_dir = request.app.state.output_dir
-        output_path = output_dir / f"{download_id}.xlsx"
-        output_path.write_bytes(output_bytes)
-        downloads[download_id] = output_path
+        download_id = _store_download(request, output_bytes)
+        preview_download_id = _store_download(request, preview_workbook_bytes)
 
         return {
             "success": True,
             "summary": summarize_records(records),
             "records": [record.to_api_dict() for record in records[:500]],
             "download_id": download_id,
+            "preview_download_id": preview_download_id,
         }
     except AppError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message) from exc
@@ -89,5 +101,18 @@ async def download_workbook(request: Request, download_id: str):
         path,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         filename="GLF_Assessment_Generated_Allocation.xlsx",
+        background=BackgroundTask(_cleanup_download, request.app.state.downloads, download_id, path),
+    )
+
+
+@router.get("/api/download-preview/{download_id}")
+async def download_preview_workbook(request: Request, download_id: str):
+    path = request.app.state.downloads.get(download_id)
+    if path is None or not path.exists():
+        raise HTTPException(status_code=404, detail="Generated allocation workbook is no longer available.")
+    return FileResponse(
+        path,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename="GLF_New_Allocation.xlsx",
         background=BackgroundTask(_cleanup_download, request.app.state.downloads, download_id, path),
     )
