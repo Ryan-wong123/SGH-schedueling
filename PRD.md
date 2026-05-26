@@ -28,6 +28,8 @@ These assessment types are columns inside the GLF Assessment Workbook.
 
 The system must generate an updated GLF Assessment Workbook as output. The output workbook must preserve all existing worksheets, data, formulas, formatting, and colours as much as possible.
 
+The system must also generate a separate new-allocation workbook for download. This second workbook is in addition to the full updated GLF workbook and should follow the same columns and rows shown in the website allocation preview.
+
 ---
 
 ## 2. Recommended Tech Stack
@@ -48,7 +50,7 @@ Use the following stack unless there is a strong reason not to:
 - TypeScript
 - Simple upload form UI
 - Results preview table
-- Download button for generated workbook
+- Download buttons for the full updated GLF workbook and the separate new-allocation workbook
 
 ### General Requirements
 
@@ -76,6 +78,7 @@ The website should have a simple workflow:
    - Skipped records
    - Unallocated records with reasons
 7. User can download the updated GLF workbook.
+8. User can download a separate new-allocation workbook that matches the website preview output.
 
 ---
 
@@ -494,6 +497,7 @@ and so on.
 9. Preserve all existing worksheets.
 10. Do not delete or overwrite the original second worksheet.
 11. Return the full updated GLF workbook for download.
+12. Also return a separate new-allocation workbook for download using the website preview output fields.
 
 ---
 
@@ -553,7 +557,29 @@ The backend API response should still return allocation records for preview in t
 
 For website preview output, the `Assessee Location` value must include the ward label in brackets for Ward allocations when available, for example `Ward (42A (1-8) RS-2)`. OPS allocations should continue to display as `OPS`.
 
-### 10.1 Status Values
+### 10.1 New-Allocation Workbook Format
+
+In addition to the full updated GLF workbook, the backend must create a separate workbook for the newly generated allocation preview.
+
+This workbook must:
+
+- Be a standalone `.xlsx` file.
+- Contain a worksheet named `New Allocation`.
+- Include only successfully allocated records.
+- Use the same display columns as the website preview table:
+  - Date
+  - Assessee
+  - Header
+  - Assessment
+  - Location
+  - Assessor
+  - Status
+  - Reason
+  - Cell
+- Preserve display-ready Ward locations such as `Ward (42A (1-8) RS-2)`.
+- Be downloaded separately from the full updated GLF workbook.
+
+### 10.2 Status Values
 
 Use only these status values:
 
@@ -566,7 +592,7 @@ Use only these status values:
 | Skipped - Not Applicable | The row or cell should not be automatically scheduled |
 | Skipped - Unsupported Cell State | The cell colour or state is unclear |
 
-### 10.2 Example API Preview Rows
+### 10.3 Example API Preview Rows
 
 | Date | Assessee Name | GLF Section Header | Assessment Type | Assessee Location | Assigned Assessor | Assessor GLF Availability Date | Status | Reason if Unallocated or Skipped | Original GLF Cell Reference | Existing Allocation History |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -616,6 +642,7 @@ After processing, show:
 3. Total skipped count
 4. Preview table of generated records
 5. Download updated GLF workbook button
+6. Download new-allocation workbook button
 
 ### 11.4 Error Display
 
@@ -684,7 +711,8 @@ If successful, return JSON containing:
     "skipped": 0
   },
   "records": [],
-  "download_id": "string"
+  "download_id": "string",
+  "preview_download_id": "string"
 }
 ```
 
@@ -701,6 +729,21 @@ Response:
 
 ```text
 GLF_Assessment_Generated_Allocation.xlsx
+```
+
+### 12.4 Download New-Allocation Workbook
+
+```http
+GET /api/download-preview/{preview_download_id}
+```
+
+Response:
+
+- Return the separate new-allocation `.xlsx` file.
+- Use a clear filename such as:
+
+```text
+GLF_New_Allocation.xlsx
 ```
 
 ---
@@ -988,6 +1031,8 @@ At minimum, test:
 23. Preview records include the GLF section header beside the assessee.
 24. Preview records show Ward locations with the ward label in brackets when available.
 25. Output workbook can be downloaded.
+26. Separate new-allocation workbook can be downloaded.
+27. Separate new-allocation workbook matches the website preview output columns.
 
 ---
 
@@ -1040,4 +1085,6 @@ The project is complete when:
 23. The frontend shows allocation summary and preview.
 24. The frontend preview includes the GLF section header beside each assessee.
 25. The frontend preview shows Ward locations with the ward label in brackets when available.
-26. Errors are shown clearly to the user.
+26. The system outputs a separate new-allocation workbook for download.
+27. The separate new-allocation workbook follows the website preview output.
+28. Errors are shown clearly to the user.

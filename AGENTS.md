@@ -76,6 +76,7 @@ The system must:
 18. Preserve all existing worksheets, formulas, formatting, data, and colours as much as possible.
 19. Do not overwrite the original second worksheet.
 20. Return the full updated GLF workbook for download.
+21. Return a separate new-allocation workbook for download, matching the website preview output.
 
 ---
 
@@ -211,6 +212,23 @@ The output workbook must:
 11. Do not write skipped or unallocated records into copied assessment cells.
 12. Clear copied values from black-filled passed cells while preserving the black fill.
 
+The website must also generate a separate allocation-only workbook:
+
+1. Name the worksheet `New Allocation`.
+2. Include only successfully allocated records.
+3. Use the same display columns as the website preview table:
+   - Date
+   - Assessee
+   - Header
+   - Assessment
+   - Location
+   - Assessor
+   - Status
+   - Reason
+   - Cell
+4. Preserve display-ready Ward locations as `Ward (<ward location>)`.
+5. Offer this file as a separate download from the full updated GLF workbook.
+
 ---
 
 ## Website Preview Table
@@ -220,7 +238,8 @@ The website preview table must:
 1. Show a `Header` column beside `Assessee`.
 2. Populate `Header` from the most recent GLF section header above the assessee row, such as `Y10`, `Y7`, `Y1`, or `New Pre-reg > OPRs`.
 3. Show Ward locations as `Ward (<ward location>)` when a Ward location label is available from the roster workbook.
-4. Continue to show OPS locations as `OPS`.
+4. Match the separate new-allocation workbook columns for allocated records.
+5. Continue to show OPS locations as `OPS`.
 
 ---
 
@@ -265,6 +284,8 @@ When implementing or modifying the system, add or update tests for:
 - Output worksheet creation
 - Blue highlight on newly allocated copied assessment cells
 - Worksheet preservation
+- Separate new-allocation workbook generation
+- Separate new-allocation workbook preview columns
 
 ---
 

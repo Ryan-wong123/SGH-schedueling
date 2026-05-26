@@ -1,8 +1,17 @@
+from io import BytesIO
+
 from openpyxl import Workbook
+from openpyxl import load_workbook
 from openpyxl.styles import Color, PatternFill
 
 from app.models.allocation import AllocationRecord
-from app.services.workbook_writer import ALLOCATED_CELL_FILL, add_generated_allocation_sheet, save_workbook_to_bytes
+from app.services.workbook_writer import (
+    ALLOCATED_CELL_FILL,
+    PREVIEW_HEADERS,
+    add_generated_allocation_sheet,
+    create_preview_allocation_workbook,
+    save_workbook_to_bytes,
+)
 
 
 def test_generated_sheet_copies_progress_format_and_writes_allocations() -> None:
@@ -122,3 +131,52 @@ def test_generated_sheet_name_increments() -> None:
     sheet_name = add_generated_allocation_sheet(wb, [])
     assert sheet_name == "Generated Allocation 2"
     assert wb.sheetnames[1] == "Generated Allocation 2"
+
+
+def test_preview_allocation_workbook_matches_website_output_columns() -> None:
+    records = [
+        AllocationRecord(
+            date="15/04/26",
+            assessee_name="Person",
+            assessment_type="MiniCeX",
+            assessee_location="Ward (7A)",
+            assigned_assessor="Assessor",
+            assessor_glf_availability_date="15/04/26",
+            status="Allocated",
+            reason="",
+            original_glf_cell_reference="J2",
+            existing_allocation_history="",
+            glf_section_header="Y10",
+        ),
+        AllocationRecord(
+            date="",
+            assessee_name="Other Person",
+            assessment_type="Dispensing",
+            assessee_location="OPS",
+            assigned_assessor="",
+            assessor_glf_availability_date="",
+            status="Unallocated",
+            reason="No eligible assessor found",
+            original_glf_cell_reference="H3",
+            existing_allocation_history="",
+            glf_section_header="Y7",
+        ),
+    ]
+
+    workbook_bytes = create_preview_allocation_workbook(records)
+    wb = load_workbook(BytesIO(workbook_bytes))
+    ws = wb["New Allocation"]
+
+    assert [cell.value for cell in ws[1]] == list(PREVIEW_HEADERS)
+    assert [cell.value for cell in ws[2]] == [
+        "15/04/26",
+        "Person",
+        "Y10",
+        "MiniCeX",
+        "Ward (7A)",
+        "Assessor",
+        "Allocated",
+        None,
+        "J2",
+    ]
+    assert ws.max_row == 2

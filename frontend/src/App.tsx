@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { generateAllocation, workbookDownloadUrl } from "./api/client";
+import { generateAllocation, previewWorkbookDownloadUrl, workbookDownloadUrl } from "./api/client";
 import { ErrorMessage } from "./components/ErrorMessage";
 import { ResultsTable } from "./components/ResultsTable";
 import { UploadForm } from "./components/UploadForm";
@@ -46,7 +46,10 @@ export default function App() {
                 <strong>{result.summary.allocated}</strong>
               </div>
               <a className="download-button" href={workbookDownloadUrl(result.download_id)}>
-                Download workbook
+                Download full GLF workbook
+              </a>
+              <a className="download-button secondary" href={previewWorkbookDownloadUrl(result.preview_download_id)}>
+                Download new allocation
               </a>
             </div>
             <ResultsTable records={result.records.filter((record) => record.status === "Allocated")} />

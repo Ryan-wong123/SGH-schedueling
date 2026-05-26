@@ -33,3 +33,7 @@ export async function generateAllocation(formData: FormData): Promise<GenerateAl
 export function workbookDownloadUrl(downloadId: string): string {
   return `${API_BASE}/api/download/${downloadId}`;
 }
+
+export function previewWorkbookDownloadUrl(downloadId: string): string {
+  return `${API_BASE}/api/download-preview/${downloadId}`;
+}

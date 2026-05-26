@@ -100,6 +100,10 @@ button,
   cursor: pointer;
 }
 
+.download-button.secondary {
+  background: #24485a;
+}
+
 button:disabled {
   background: #8aa59b;
   cursor: wait;
@@ -129,6 +133,7 @@ button:disabled {
   align-items: center;
   gap: 16px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 }
 
 .allocated-summary {

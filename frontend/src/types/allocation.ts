@@ -33,4 +33,5 @@ export interface GenerateAllocationResponse {
   summary: AllocationSummary;
   records: AllocationRecord[];
   download_id: string;
+  preview_download_id: string;
 }
