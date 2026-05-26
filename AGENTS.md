@@ -207,8 +207,9 @@ The output workbook must:
 7. Preserve data, formulas, formatting, and colours as much as possible.
 8. Copy the original GLF progress worksheet as the generated worksheet.
 9. Write assessor/date text only into successfully allocated copied assessment cells.
-10. Do not write skipped or unallocated records into copied assessment cells.
-11. Clear copied values from black-filled passed cells while preserving the black fill.
+10. Highlight successfully allocated copied assessment cells in blue.
+11. Do not write skipped or unallocated records into copied assessment cells.
+12. Clear copied values from black-filled passed cells while preserving the black fill.
 
 ---
 
@@ -262,6 +263,7 @@ When implementing or modifying the system, add or update tests for:
 - Location compatibility
 - Round-robin assignment
 - Output worksheet creation
+- Blue highlight on newly allocated copied assessment cells
 - Worksheet preservation
 
 ---
