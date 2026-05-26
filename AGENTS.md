@@ -56,24 +56,26 @@ The system must:
 4. Use the first worksheet of the Roster Ward Allocation Workbook for OPS entries and non-ward GLF availability.
 5. Use the second worksheet of the Roster Ward Allocation Workbook for Ward date/location allocation.
 6. Use the second worksheet of the GLF Assessment Workbook as the current assessment progress worksheet.
-7. Allocate assessors only for blank assessment cells in these columns:
+7. Preserve the GLF section header above each assessee row for the website preview table.
+8. Allocate assessors only for blank assessment cells in these columns:
    - Rx Check
    - Dispensing
    - Med Recon
    - MiniCeX
-8. Skip black-filled cells because they indicate the assessee has passed out of the assessment.
-9. Skip cells with existing text because they already contain allocation history.
-10. Ignore CBD and PA for automatic allocation.
-11. Enforce daily assessor limits:
+9. Skip black-filled cells because they indicate the assessee has passed out of the assessment.
+10. Skip cells with existing text because they already contain allocation history.
+11. Ignore CBD and PA for automatic allocation.
+12. Enforce daily assessor limits:
     - Maximum 4 total assessments per assessor per day
     - Maximum 2 MiniCeX assessments per assessor per day
-12. Use round-robin allocation among eligible assessors.
-13. Avoid assigning the same assessor already used for the same assessee for MiniCeX and Med Recon, where possible.
-14. Generate a new worksheet named `Generated Allocation`.
-15. Insert the generated worksheet immediately after the first worksheet.
-16. Preserve all existing worksheets, formulas, formatting, data, and colours as much as possible.
-17. Do not overwrite the original second worksheet.
-18. Return the full updated GLF workbook for download.
+13. Use round-robin allocation among eligible assessors.
+14. Avoid assigning the same assessor already used for the same assessee for MiniCeX and Med Recon, where possible.
+15. Show Ward locations in the website preview as `Ward (<ward location>)` when the Ward location label is available.
+16. Generate a new worksheet named `Generated Allocation`.
+17. Insert the generated worksheet immediately after the first worksheet.
+18. Preserve all existing worksheets, formulas, formatting, data, and colours as much as possible.
+19. Do not overwrite the original second worksheet.
+20. Return the full updated GLF workbook for download.
 
 ---
 
@@ -155,6 +157,7 @@ The system must inspect cell fill colours, not only cell values.
 - In the second worksheet, use only white cells for Ward date/location data.
 - In white Ward cells, names outside `{...}` identify Ward assessors available on that date.
 - In white Ward cells, names inside `{...}` identify Ward assessees available on that date.
+- The Ward location label comes from column A on the same row as the white Ward cell.
 - Ignore `floater` / `*floater*` roster placeholders.
 - Ignore non-white cells in the second worksheet for Ward allocation.
 - Green cells in the first worksheet indicate OPS.
@@ -209,6 +212,17 @@ The output workbook must:
 
 ---
 
+## Website Preview Table
+
+The website preview table must:
+
+1. Show a `Header` column beside `Assessee`.
+2. Populate `Header` from the most recent GLF section header above the assessee row, such as `Y10`, `Y7`, `Y1`, or `New Pre-reg > OPRs`.
+3. Show Ward locations as `Ward (<ward location>)` when a Ward location label is available from the roster workbook.
+4. Continue to show OPS locations as `OPS`.
+
+---
+
 ## Error Handling Expectations
 
 Return clear errors for:
@@ -238,6 +252,8 @@ When implementing or modifying the system, add or update tests for:
 - Roster first worksheet parsing
 - Roster second worksheet Ward parsing
 - Ward assessor selection from second worksheet white cells
+- GLF section header extraction for preview records
+- Ward location label extraction for preview records
 - Cell colour classification
 - Theme-black GLF cell classification
 - Assessment cell status classification

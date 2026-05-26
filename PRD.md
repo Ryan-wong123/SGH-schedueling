@@ -107,6 +107,7 @@ For Ward allocation, the system must use the second worksheet:
 - Only white-filled cells are used.
 - Names outside `{...}` are Ward assessors available on that date.
 - Names inside `{...}` are Ward assessees available on that date.
+- The ward location label is taken from the same row's first column and should be preserved for preview output.
 - `floater` / `*floater*` text is a roster placeholder and must not be treated as an assessor or assessee.
 - Non-white cells in the second worksheet must be ignored for Ward allocation.
 
@@ -239,6 +240,8 @@ Rows such as the following are section headers and must not be allocated:
 - Y1
 - New Pre-reg > OPRs
 - Legend
+
+For each assessee row, preserve the most recent GLF section header above that row, such as `Y10`, `Y7`, `Y1`, or `New Pre-reg > OPRs`, so it can be shown in the website preview table.
 
 If a person exists in the roster workbook but does not exist in the GLF Assessment Workbook, do not allocate any assessment for that person.
 
@@ -431,6 +434,7 @@ Implement the allocation logic using the following high-level algorithm.
    - Black-filled cell = skip as already passed.
    - Cell with text = skip as already allocated.
    - Unsupported coloured cell = skip unless clearly blank and allocatable.
+   - Preserve the current GLF section header for preview output.
 
 ### Step 3: Parse Roster
 
@@ -439,8 +443,9 @@ Implement the allocation logic using the following high-level algorithm.
 3. Detect non-ward assessors with yellow GLF availability in worksheet 1.
 4. Detect OPS assessee date and location from green cells in worksheet 1.
 5. Detect Ward assessors and Ward assessees from white cells in worksheet 2.
-6. Ignore non-white cells in worksheet 2 for Ward allocation.
-7. Classify locations:
+6. Capture the ward location label from column A on each Ward allocation row.
+7. Ignore non-white cells in worksheet 2 for Ward allocation.
+8. Classify locations:
    - Green cells in worksheet 1 = OPS
    - White cells in worksheet 2 = Ward
 
@@ -535,6 +540,7 @@ The backend API response should still return allocation records for preview in t
 
 - Date
 - Assessee Name
+- GLF Section Header
 - Assessment Type
 - Assessee Location
 - Assigned Assessor
@@ -543,6 +549,8 @@ The backend API response should still return allocation records for preview in t
 - Reason if Unallocated or Skipped
 - Original GLF Cell Reference
 - Existing Allocation History
+
+For website preview output, the `Assessee Location` value must include the ward label in brackets for Ward allocations when available, for example `Ward (42A (1-8) RS-2)`. OPS allocations should continue to display as `OPS`.
 
 ### 10.1 Status Values
 
@@ -559,13 +567,13 @@ Use only these status values:
 
 ### 10.2 Example API Preview Rows
 
-| Date | Assessee Name | Assessment Type | Assessee Location | Assigned Assessor | Assessor GLF Availability Date | Status | Reason if Unallocated or Skipped | Original GLF Cell Reference | Existing Allocation History |
-|---|---|---|---|---|---|---|---|---|---|
-| 10/03/26 | Amanda Chua Jing Yi | Rx Check | Ward | Cheryl | 10/03/26 | Allocated |  | G45 |  |
-| 15/04/26 | Celine Sia Si Lin | Med Recon | Ward | Gen | 15/04/26 | Allocated |  | I46 |  |
-| 08/04/26 | Chan Xiao Ting, Kristy | MiniCeX | Ward |  |  | Skipped - Already Allocated | Existing allocation found | J47 | Cheryl 08/04/26 |
-| 22/04/26 | Megan Goh | Dispensing | OPS |  |  | Unallocated | No available assessor with OPS-compatible availability | H23 |  |
-|  | Denise Song | Rx Check |  |  |  | Skipped - Already Passed | Black-filled cell | G23 |  |
+| Date | Assessee Name | GLF Section Header | Assessment Type | Assessee Location | Assigned Assessor | Assessor GLF Availability Date | Status | Reason if Unallocated or Skipped | Original GLF Cell Reference | Existing Allocation History |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 10/03/26 | Amanda Chua Jing Yi | Y1 | Rx Check | Ward (42A (1-8) RS-2) | Cheryl | 10/03/26 | Allocated |  | G45 |  |
+| 15/04/26 | Celine Sia Si Lin | Y2 | Med Recon | Ward (45A) | Gen | 15/04/26 | Allocated |  | I46 |  |
+| 08/04/26 | Chan Xiao Ting, Kristy | Y3 | MiniCeX | Ward |  |  | Skipped - Already Allocated | Existing allocation found | J47 | Cheryl 08/04/26 |
+| 22/04/26 | Megan Goh | Y3 | Dispensing | OPS |  |  | Unallocated | No available assessor with OPS-compatible availability | H23 |  |
+|  | Denise Song | Y4 | Rx Check |  |  |  | Skipped - Already Passed | Black-filled cell | G23 |  |
 
 ---
 
@@ -784,8 +792,9 @@ type AllocationStatus =
 interface AllocationRecord {
   date: string;
   assesseeName: string;
+  glfSectionHeader: string;
   assessmentType: AssessmentType;
-  assesseeLocation: LocationType;
+  assesseeLocation: string;
   assignedAssessor: string;
   assessorGlfAvailabilityDate: string;
   status: AllocationStatus;
@@ -974,7 +983,9 @@ At minimum, test:
 19. Generated worksheet name increments if `Generated Allocation` already exists.
 20. Theme-black GLF cells are treated as black-filled passed cells.
 21. Generated worksheet clears copied text from black-filled passed cells.
-22. Output workbook can be downloaded.
+22. Preview records include the GLF section header beside the assessee.
+23. Preview records show Ward locations with the ward label in brackets when available.
+24. Output workbook can be downloaded.
 
 ---
 
@@ -1024,4 +1035,6 @@ The project is complete when:
 20. The generated worksheet is a copied progress worksheet with assessor/date values written only into allocated copied cells.
 21. The generated worksheet preserves black-filled passed cells and clears copied text from those cells.
 22. The frontend shows allocation summary and preview.
-23. Errors are shown clearly to the user.
+23. The frontend preview includes the GLF section header beside each assessee.
+24. The frontend preview shows Ward locations with the ward label in brackets when available.
+25. Errors are shown clearly to the user.
