@@ -170,7 +170,6 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
         allocation: Optional[AllocationRecord] = None
         last_entry = compatible_entries[0]
         capacity_blocked = False
-        repeated_fallback = False
 
         for entry in compatible_entries:
             last_entry = entry
@@ -188,9 +187,12 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
                 continue
 
             preferred = candidates
+            repeated_fallback = False
             if need.assessment_type in REPEAT_AVOIDANCE_ASSESSMENTS:
                 non_repeated = [
-                    name for name in candidates if not _existing_matches_assessor(need.existing_assessors_for_row, name)
+                    name
+                    for name in candidates
+                    if not _existing_matches_assessor(need.existing_assessors_for_row, name)
                 ]
                 if non_repeated:
                     preferred = non_repeated

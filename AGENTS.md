@@ -69,7 +69,8 @@ The system must:
     - Maximum 4 total assessments per assessor per day
     - Maximum 2 MiniCeX assessments per assessor per day
 13. Use round-robin allocation among eligible assessors.
-14. Avoid assigning the same assessor already used for the same assessee for MiniCeX and Med Recon, where possible.
+14. Avoid assigning the same assessor already used for the same assessee in the GLF second worksheet for Rx Check, Dispensing, Med Recon, and MiniCeX, where possible.
+    New allocations created during the current generation may reuse the same assessor for the same assessee when that assessor still has capacity under the daily limits.
 15. Show Ward locations in the website preview as `Ward (<ward location>)` when the Ward location label is available.
 16. Generate a new worksheet named `Generated Allocation`.
 17. Insert the generated worksheet immediately after the first worksheet.

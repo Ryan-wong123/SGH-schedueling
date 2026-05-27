@@ -244,7 +244,7 @@ Responsibilities:
   - Already allocated
   - Not applicable
   - Unsupported cell state
-- Extract existing allocation history for repeat-assessor avoidance.
+- Extract existing allocation history from Rx Check, Dispensing, Med Recon, and MiniCeX cells for repeat-assessor avoidance.
 
 Expected output:
 
@@ -295,7 +295,8 @@ Responsibilities:
 - Enforce assessment location rules.
 - Enforce assessor capacity rules.
 - Run round-robin assessor selection.
-- Avoid repeated assessors for MiniCeX and Med Recon where possible.
+- Avoid assessors already used for the same assessee in the GLF second worksheet for all allocatable assessment types, where possible.
+- Allow new allocations created during the current generation to reuse the same assessor for the same assessee when capacity permits.
 - Produce allocation records, including GLF section headers and display-ready locations such as `Ward (42A (1-8) RS-2)`.
 
 This module is the core business logic layer.
@@ -496,7 +497,8 @@ For each assessment need from the GLF workbook:
 9. Filter assessors by capacity:
    - Total assessments < 4
    - MiniCeX assessments < 2 if MiniCeX
-10. For MiniCeX and Med Recon, avoid existing assessor history for that assessee.
+10. For Rx Check, Dispensing, Med Recon, and MiniCeX, avoid existing assessor history for that assessee from the GLF second worksheet.
+    New allocations made in the current generation are controlled by capacity rules and may reuse the same assessor for the same assessee.
 11. Use round-robin tie-breaking.
 12. Create allocation record.
 13. If no assessor is available, create unallocated record with reason.

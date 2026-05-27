@@ -119,6 +119,7 @@ Do not try to implement everything in one large change. Complete the project in 
 - [ ] Classify text cells as `Skipped - Already Allocated`.
 - [ ] Preserve original GLF cell references, such as `G45`.
 - [ ] Extract existing allocation history from text cells.
+- [ ] Extract repeat-assessor history from Rx Check, Dispensing, Med Recon, and MiniCeX text cells.
 - [ ] Add parser tests for all classification states.
 
 ---
@@ -165,7 +166,8 @@ Do not try to implement everything in one large change. Complete the project in 
   - MiniCeX = Ward only
 - [ ] Enforce assessor max 4 assessments per day.
 - [ ] Enforce assessor max 2 MiniCeX per day.
-- [ ] Implement repeat-assessor avoidance for MiniCeX and Med Recon.
+- [ ] Implement repeat-assessor avoidance against existing GLF second-sheet history for Rx Check, Dispensing, Med Recon, and MiniCeX.
+- [ ] Allow same-run allocations to reuse an assessor for the same assessee when capacity rules permit.
 - [ ] Implement round-robin selection:
   - Fewest assignments on date
   - Least recently used

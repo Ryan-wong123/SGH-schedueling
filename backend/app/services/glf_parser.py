@@ -87,7 +87,7 @@ def parse_glf_progress(workbook) -> List[GlfAssessmentNeed]:
             continue
 
         existing_for_row: List[str] = []
-        for assessment in ("Med Recon", "MiniCeX"):
+        for assessment in ASSESSMENT_TYPES:
             existing_for_row.extend(_extract_existing_assessors(ws.cell(row_index, assessment_columns[assessment]).value))
 
         for assessment in ASSESSMENT_TYPES:

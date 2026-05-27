@@ -40,7 +40,7 @@ Open local app:
 http://127.0.0.1:5173
 ```
 
-## Easy Start For Non-Programmers
+## Easy Start
 
 On Windows, double-click:
 
