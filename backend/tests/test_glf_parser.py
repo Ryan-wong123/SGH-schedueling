@@ -52,6 +52,21 @@ def test_glf_parser_uses_second_sheet_and_classifies_cells() -> None:
     assert all(need.assessment_type not in {"CBD", "PA"} for need in needs)
 
 
+def test_glf_parser_extracts_existing_assessors_from_all_allocated_assessment_cells() -> None:
+    wb = build_glf_workbook()
+    ws = wb["Progress"]
+    ws["G3"] = "Rx Assessor 10/03/26"
+    ws["H3"] = "Disp Assessor 11/03/26"
+    ws["I3"] = "Med Assessor 12/03/26"
+    ws["I3"].fill = PatternFill()
+
+    needs = parse_glf_progress(wb)
+    minicex_need = next(need for need in needs if need.original_glf_cell_reference == "J3")
+
+    assert minicex_need.needs_allocation
+    assert minicex_need.existing_assessors_for_row == ("Rx Assessor", "Disp Assessor", "Med Assessor")
+
+
 def test_glf_parser_treats_theme_dark_cells_as_already_passed() -> None:
     wb = build_glf_workbook()
     ws = wb["Progress"]

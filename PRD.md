@@ -294,10 +294,11 @@ Rules:
 - Treat the text as existing allocation history.
 - Record it in the generated output worksheet as skipped or existing history.
 
-For MiniCeX and Med Recon:
+For all allocatable assessment types:
 
-- Avoid assigning the same assessor already used for that assessee from the second worksheet.
-- The system should read existing MiniCeX and Med Recon cells for that assessee and avoid repeating the same assessor if possible.
+- Avoid assigning the same assessor already used for that assessee from the GLF second worksheet, where possible.
+- The system should read existing Rx Check, Dispensing, Med Recon, and MiniCeX cells for that assessee and avoid repeating those existing assessors if possible.
+- New allocations created during the current generation do not count as existing history for this rule. If the assigned assessor still has capacity for that date, they may be allocated to another assessment for the same assessee.
 
 ---
 
@@ -399,10 +400,12 @@ assessor_minicex_assignments_for_date < 2
 
 ### 7.2 Repeat Assessor Avoidance
 
-For MiniCeX and Med Recon:
+For Rx Check, Dispensing, Med Recon, and MiniCeX:
 
-- Avoid assigning the same assessor already used for that assessee in the GLF second worksheet.
-- If all eligible assessors were already used before, choose the least recently used eligible assessor and mark the reason as:
+- Avoid assigning the same assessor already used for that assessee in the GLF second worksheet, where possible.
+- Existing assessor history must be read from that assessee's Rx Check, Dispensing, Med Recon, and MiniCeX cells.
+- Do not treat new allocations made during the current generation as repeat history. Same-run allocations may reuse an assessor for the same assessee when that assessor still has capacity under the daily capacity rules.
+- If all eligible assessors were already used in the GLF second worksheet, choose the least recently used eligible assessor and mark the reason as:
 
 ```text
 Repeated assessor used because no alternative eligible assessor was available.
@@ -465,7 +468,7 @@ For each assessee requiring allocation:
    - GLF availability
    - Location compatibility
    - Capacity
-   - MiniCeX/Med Recon repeat-assessor rule
+   - Existing GLF history repeat-assessor rule
 6. Use round-robin to pick the best assessor.
 7. If an assessor is found, create an allocated record.
 8. If no assessor is found, create an unallocated record with a reason.
@@ -1013,7 +1016,7 @@ At minimum, test:
 5. Blank GLF assessment cells are considered for allocation.
 6. Existing text cells are skipped.
 7. CBD and PA columns are ignored.
-8. MiniCeX and Med Recon avoid repeated assessors for the same assessee.
+8. Rx Check, Dispensing, Med Recon, and MiniCeX avoid assessors already used for the same assessee in the GLF second worksheet, where possible.
 9. Assessor max 4 assessments per day is enforced.
 10. Assessor max 2 MiniCeX per day is enforced.
 11. Dispensing only matches OPS.
@@ -1074,7 +1077,7 @@ The project is complete when:
 12. The system enforces max 4 assessments per assessor per day.
 13. The system enforces max 2 MiniCeX per assessor per day.
 14. The system uses round-robin allocation among eligible assessors.
-15. The system avoids repeated assessors for MiniCeX and Med Recon where possible.
+15. The system avoids assessors already used for the same assessee in the GLF second worksheet for Rx Check, Dispensing, Med Recon, and MiniCeX where possible, while allowing same-run reuse when capacity permits.
 16. The system creates a new worksheet immediately after the first worksheet.
 17. The system preserves all original worksheets.
 18. The system does not overwrite the original second worksheet.

@@ -15,7 +15,7 @@ AllocationStatus = Literal[
 ]
 
 ASSESSMENT_TYPES: Tuple[AssessmentType, ...] = ("Rx Check", "Dispensing", "Med Recon", "MiniCeX")
-REPEAT_AVOIDANCE_ASSESSMENTS = {"Med Recon", "MiniCeX"}
+REPEAT_AVOIDANCE_ASSESSMENTS = set(ASSESSMENT_TYPES)
 
 
 @dataclass(frozen=True)

@@ -71,6 +71,52 @@ def test_repeat_assessor_avoidance_for_med_recon() -> None:
     assert records[0].assigned_assessor == "Melissa Wu"
 
 
+def test_current_run_assignments_can_repeat_for_same_assessee_when_capacity_allows() -> None:
+    roster = roster_for(
+        [RosterEntry("Person", "15/04/26", "OPS")],
+        {"15/04/26": ["Assessor A"]},
+    )
+    records = allocate_assessments(
+        [
+            make_need("Person", "Rx Check", "G2"),
+            make_need("Person", "Dispensing", "H2"),
+        ],
+        roster,
+    )
+    assert [record.assigned_assessor for record in records] == ["Assessor A", "Assessor A"]
+    assert all(record.reason == "" for record in records)
+
+
+def test_existing_assessor_avoidance_applies_to_rx_check_and_dispensing() -> None:
+    roster = roster_for(
+        [RosterEntry("Person", "15/04/26", "OPS")],
+        {"15/04/26": ["Assessor A", "Assessor B"]},
+    )
+    records = allocate_assessments(
+        [
+            make_need("Person", "Rx Check", "G2", existing=("Assessor A",)),
+            make_need("Person", "Dispensing", "H2", existing=("Assessor A",)),
+        ],
+        roster,
+    )
+    assert [record.assigned_assessor for record in records] == ["Assessor B", "Assessor B"]
+
+
+def test_repeat_assessor_fallback_marks_reason_when_no_alternative_exists() -> None:
+    roster = roster_for(
+        [RosterEntry("Person", "15/04/26", "Ward")],
+        {"15/04/26": ["Assessor A"]},
+    )
+    records = allocate_assessments(
+        [
+            make_need("Person", "Med Recon", "I2", existing=("Assessor A",)),
+        ],
+        roster,
+    )
+    assert records[0].assigned_assessor == "Assessor A"
+    assert records[0].reason == "Repeated assessor used because no alternative eligible assessor was available."
+
+
 def test_ward_allocation_uses_ward_assessors_for_same_date() -> None:
     roster = RosterData(
         available_assessors_by_date={"15/04/26": ["OPS Assessor", "Ward Assessor"]},
