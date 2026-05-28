@@ -127,18 +127,21 @@ Do not try to implement everything in one large change. Complete the project in 
 ## Phase 6: Roster Workbook Parser
 
 - [ ] Implement `roster_parser.py`.
-- [ ] Always read only the first worksheet.
-- [ ] Ignore the second worksheet and any other worksheets.
+- [ ] Read the first worksheet for OPS entries and non-ward GLF availability.
+- [ ] Read the second worksheet for Ward date/location allocation.
 - [ ] Detect assessors with yellow GLF availability.
 - [ ] Extract assessor names and GLF availability dates.
 - [ ] Detect assessee rows and roster dates.
 - [ ] Detect location from colour-coded cells:
   - Green = OPS
-  - White / Purple / Orange / Beige = Ward
+  - White cells in worksheet 2 = Ward
+- [ ] Treat white Ward cells containing `{...}` as occupied/manual cells that are ignored entirely for automatic allocation, including names inside and outside the braces.
+- [ ] Treat white Ward cells without `{...}` as Ward assessor availability.
 - [ ] Return structured roster data.
-- [ ] Add tests to confirm only first worksheet is used.
+- [ ] Add tests to confirm both roster worksheets are used for their intended purposes.
 - [ ] Add tests for GLF availability detection.
 - [ ] Add tests for OPS/Ward location detection.
+- [ ] Add tests that brace-containing Ward cells do not create automatic assessee entries or assessor availability.
 
 ---
 

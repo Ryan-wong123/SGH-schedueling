@@ -269,6 +269,7 @@ Responsibilities:
   - Green = OPS
   - White cells in worksheet 2 = Ward
   - Non-white cells in worksheet 2 = ignored for Ward allocation
+- Treat white Ward cells containing `{...}` as occupied/manual Ward cells that are fully ignored for automatic allocation. Names inside and outside braces in those cells do not create assessee entries or assessor availability. White Ward cells without `{...}` provide Ward assessor availability.
 - Preserve the ward location label from column A for Ward preview output.
 - Return structured roster data.
 
@@ -492,7 +493,7 @@ For each assessment need from the GLF workbook:
    - Dispensing = OPS only
    - Med Recon = Ward only
    - MiniCeX = Ward only
-7. Find available assessors with GLF availability on same date.
+7. Find available assessors with GLF availability on same date. For Ward allocation, ignore brace-containing Ward cells entirely before matching assessees or assessors.
 8. Filter assessors by location compatibility.
 9. Filter assessors by capacity:
    - Total assessments < 4
@@ -565,6 +566,7 @@ Test the logic in layers:
 2. Parser tests
    - GLF workbook parser
    - Roster workbook parser
+   - Brace-containing Ward cells do not create automatic assessee entries or assessor availability
 3. Allocation tests
    - Capacity limits
    - Location compatibility

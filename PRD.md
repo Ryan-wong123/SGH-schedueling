@@ -108,8 +108,8 @@ The system must identify assessors with GLF availability by reading the cell fil
 For Ward allocation, the system must use the second worksheet:
 
 - Only white-filled cells are used.
-- Names outside `{...}` are Ward assessors available on that date.
-- Names inside `{...}` are Ward assessees available on that date.
+- White Ward cells containing `{...}` are occupied/manual Ward allocation cells and must be ignored entirely for automatic allocation. Names inside and outside `{...}` in that cell must not be treated as assessees or assessors.
+- White Ward cells without `{...}` identify Ward assessors available on that date.
 - The ward location label is taken from the same row's first column and should be preserved for preview output.
 - `floater` / `*floater*` text is a roster placeholder and must not be treated as an assessor or assessee.
 - Non-white cells in the second worksheet must be ignored for Ward allocation.
@@ -448,10 +448,11 @@ Implement the allocation logic using the following high-level algorithm.
 2. Open the second worksheet of the roster workbook for Ward allocation.
 3. Detect non-ward assessors with yellow GLF availability in worksheet 1.
 4. Detect OPS assessee date and location from green cells in worksheet 1.
-5. Detect Ward assessors and Ward assessees from white cells in worksheet 2.
-6. Capture the ward location label from column A on each Ward allocation row.
-7. Ignore non-white cells in worksheet 2 for Ward allocation.
-8. Classify locations:
+5. Detect Ward assessors from white worksheet 2 cells without `{...}`.
+6. Ignore white worksheet 2 cells containing `{...}` entirely for automatic allocation, including names inside and outside the braces.
+7. Capture the ward location label from column A on each Ward allocation row.
+8. Ignore non-white cells in worksheet 2 for Ward allocation.
+9. Classify locations:
    - Green cells in worksheet 1 = OPS
    - White cells in worksheet 2 = Ward
 
@@ -1011,31 +1012,32 @@ At minimum, test:
 
 1. GLF workbook password handling.
 2. Roster workbook uses the first worksheet for OPS/non-ward availability and the second worksheet white cells for Ward assessors and assessees.
-3. GLF workbook uses the second worksheet as progress source.
-4. Black-filled GLF cells are skipped.
-5. Blank GLF assessment cells are considered for allocation.
-6. Existing text cells are skipped.
-7. CBD and PA columns are ignored.
-8. Rx Check, Dispensing, Med Recon, and MiniCeX avoid assessors already used for the same assessee in the GLF second worksheet, where possible.
-9. Assessor max 4 assessments per day is enforced.
-10. Assessor max 2 MiniCeX per day is enforced.
-11. Dispensing only matches OPS.
-12. MiniCeX only matches Ward.
-13. Med Recon only matches Ward.
-14. Rx Check matches Ward or OPS.
-15. Round-robin chooses the least-assigned eligible assessor.
-16. New worksheet is inserted after the first worksheet.
-17. Existing second worksheet is preserved and shifted.
-18. Existing worksheets, formulas, formatting, and colours are preserved as much as possible.
-19. Generated worksheet name increments if `Generated Allocation` already exists.
-20. Theme-black GLF cells are treated as black-filled passed cells.
-21. Generated worksheet clears copied text from black-filled passed cells.
-22. Generated worksheet highlights newly allocated cells in blue.
-23. Preview records include the GLF section header beside the assessee.
-24. Preview records show Ward locations with the ward label in brackets when available.
-25. Output workbook can be downloaded.
-26. Separate new-allocation workbook can be downloaded.
-27. Separate new-allocation workbook matches the website preview output columns.
+3. White Ward cells containing `{...}` are fully ignored and do not create automatic assessee entries or assessor availability.
+4. GLF workbook uses the second worksheet as progress source.
+5. Black-filled GLF cells are skipped.
+6. Blank GLF assessment cells are considered for allocation.
+7. Existing text cells are skipped.
+8. CBD and PA columns are ignored.
+9. Rx Check, Dispensing, Med Recon, and MiniCeX avoid assessors already used for the same assessee in the GLF second worksheet, where possible.
+10. Assessor max 4 assessments per day is enforced.
+11. Assessor max 2 MiniCeX per day is enforced.
+12. Dispensing only matches OPS.
+13. MiniCeX only matches Ward.
+14. Med Recon only matches Ward.
+15. Rx Check matches Ward or OPS.
+16. Round-robin chooses the least-assigned eligible assessor.
+17. New worksheet is inserted after the first worksheet.
+18. Existing second worksheet is preserved and shifted.
+19. Existing worksheets, formulas, formatting, and colours are preserved as much as possible.
+20. Generated worksheet name increments if `Generated Allocation` already exists.
+21. Theme-black GLF cells are treated as black-filled passed cells.
+22. Generated worksheet clears copied text from black-filled passed cells.
+23. Generated worksheet highlights newly allocated cells in blue.
+24. Preview records include the GLF section header beside the assessee.
+25. Preview records show Ward locations with the ward label in brackets when available.
+26. Output workbook can be downloaded.
+27. Separate new-allocation workbook can be downloaded.
+28. Separate new-allocation workbook matches the website preview output columns.
 
 ---
 
@@ -1067,7 +1069,7 @@ The project is complete when:
 2. User can enter the GLF workbook password.
 3. Backend can read the password-protected GLF workbook.
 4. Backend reads the first roster worksheet for OPS entries and non-ward GLF availability.
-5. Backend reads the second roster worksheet white cells for Ward assessors and assessees.
+5. Backend reads the second roster worksheet white cells for Ward assessors and assessees, while fully ignoring brace-containing Ward cells for automatic allocation.
 6. Backend reads the second worksheet of the GLF workbook for current progress.
 7. The system identifies blank assessment cells requiring allocation.
 8. The system skips black-filled cells.

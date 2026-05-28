@@ -157,8 +157,8 @@ The system must inspect cell fill colours, not only cell values.
 - Use the first worksheet for OPS entries and GLF availability outside Ward allocation.
 - Use the second worksheet for Ward allocation.
 - In the second worksheet, use only white cells for Ward date/location data.
-- In white Ward cells, names outside `{...}` identify Ward assessors available on that date.
-- In white Ward cells, names inside `{...}` identify Ward assessees available on that date.
+- White Ward cells containing `{...}` are occupied/manual Ward allocation cells and must be ignored entirely for automatic allocation. Names inside and outside `{...}` in that cell must not be treated as assessees or assessors.
+- White Ward cells without `{...}` identify Ward assessors available on that date.
 - The Ward location label comes from column A on the same row as the white Ward cell.
 - Ignore `floater` / `*floater*` roster placeholders.
 - Ignore non-white cells in the second worksheet for Ward allocation.
@@ -272,6 +272,7 @@ When implementing or modifying the system, add or update tests for:
 - GLF second worksheet parsing
 - Roster first worksheet parsing
 - Roster second worksheet Ward parsing
+- Brace-containing Ward cells do not create automatic assessee entries or assessor availability
 - Ward assessor selection from second worksheet white cells
 - GLF section header extraction for preview records
 - Ward location label extraction for preview records
