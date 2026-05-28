@@ -89,6 +89,8 @@ def _select_assessor(
 
 
 def _available_assessors_for_entry(roster: RosterData, entry: RosterEntry) -> List[str]:
+    if entry.location == "Ward" and entry.source_cell in roster.ward_assessors_by_source_cell:
+        return roster.ward_assessors_by_source_cell[entry.source_cell]
     by_location = roster.available_assessors_by_date_location.get(entry.date, {})
     if by_location:
         return by_location.get(entry.location, [])

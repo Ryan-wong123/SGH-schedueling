@@ -45,6 +45,7 @@ class RosterData:
     available_assessors_by_date: Dict[str, List[str]]
     assessee_entries_by_name: Dict[str, List[RosterEntry]]
     available_assessors_by_date_location: Dict[str, Dict[LocationType, List[str]]] = field(default_factory=dict)
+    ward_assessors_by_source_cell: Dict[str, List[str]] = field(default_factory=dict)
 
 
 @dataclass

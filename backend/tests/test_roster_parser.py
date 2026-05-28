@@ -31,17 +31,21 @@ def build_roster_workbook() -> Workbook:
 
 def test_roster_parser_uses_second_sheet_white_cells_for_ward_assessors_and_assessees() -> None:
     roster = parse_roster(build_roster_workbook())
-    assert roster.available_assessors_by_date == {"15/04/26": ["Fiona Yeo", "Genevieve Subur"]}
+    assert roster.available_assessors_by_date == {"15/04/26": ["Genevieve Subur"]}
     assert roster.available_assessors_by_date_location == {
         "15/04/26": {
             "OPS": ["Genevieve Subur"],
-            "Ward": ["Fiona Yeo"],
         }
     }
+    assert roster.ward_assessors_by_source_cell["B3"] == []
     entries = find_roster_entries(roster, "Amanda Chua Jing Yi")
     assert sorted((entry.date, entry.location) for entry in entries) == [
-        ("15/04/26", "Ward"),
         ("16/04/26", "OPS"),
     ]
-    ward_entries = [entry for entry in entries if entry.location == "Ward"]
-    assert ward_entries[0].ward_location == "42A (1-8) RS-2"
+
+
+def test_braced_ward_cell_is_fully_ignored_for_automatic_allocation() -> None:
+    roster = parse_roster(build_roster_workbook())
+    assert "Fiona Yeo" not in roster.available_assessors_by_date.get("15/04/26", [])
+    entries = find_roster_entries(roster, "Amanda Chua Jing Yi")
+    assert all(entry.source_cell != "B3" for entry in entries)

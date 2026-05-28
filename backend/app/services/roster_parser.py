@@ -120,6 +120,7 @@ def _parse_ward_roster_sheet(
     available: Dict[str, List[str]],
     available_by_location: Dict[str, Dict[LocationType, List[str]]],
     entries: Dict[str, List[RosterEntry]],
+    ward_assessors_by_source_cell: Dict[str, List[str]],
 ) -> None:
     date_row, date_columns = _find_date_columns(ws)
     for row_index in range(date_row + 1, ws.max_row + 1):
@@ -130,7 +131,12 @@ def _parse_ward_roster_sheet(
                 continue
             if classify_location_from_fill(cell) != "Ward":
                 continue
+            has_braced_names = bool(BRACED_TEXT_PATTERN.search(str(cell.value or "")))
+            if has_braced_names:
+                ward_assessors_by_source_cell[cell.coordinate] = []
+                continue
             assessors, assessees = _extract_ward_cell_people(cell.value)
+            ward_assessors_by_source_cell[cell.coordinate] = assessors
             for assessor in assessors:
                 _add_available(available, available_by_location, date_text, "Ward", assessor)
             for name in assessees:
@@ -155,9 +161,16 @@ def parse_roster(workbook) -> RosterData:
         lambda: defaultdict(list)
     )
     entries: DefaultDict[str, List[RosterEntry]] = defaultdict(list)
+    ward_assessors_by_source_cell: Dict[str, List[str]] = {}
 
     _parse_primary_roster_sheet(workbook.worksheets[0], available, available_by_location, entries)
-    _parse_ward_roster_sheet(workbook.worksheets[1], available, available_by_location, entries)
+    _parse_ward_roster_sheet(
+        workbook.worksheets[1],
+        available,
+        available_by_location,
+        entries,
+        ward_assessors_by_source_cell,
+    )
 
     for date_text in list(available):
         available[date_text] = sorted(set(available[date_text]), key=normalize_name)
@@ -173,7 +186,7 @@ def parse_roster(workbook) -> RosterData:
         raise AppError("Unable to detect GLF availability in the roster workbook.")
     if not entries:
         raise AppError("Unable to detect assessee locations in the roster workbook.")
-    return RosterData(dict(available), dict(entries), location_availability)
+    return RosterData(dict(available), dict(entries), location_availability, ward_assessors_by_source_cell)
 
 
 def find_roster_entries(roster: RosterData, assessee_name: str) -> List[RosterEntry]:
