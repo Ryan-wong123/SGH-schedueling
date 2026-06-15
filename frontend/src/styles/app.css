@@ -9,7 +9,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -80,12 +81,17 @@ label span {
   font-size: 0.9rem;
 }
 
-input {
+input,
+select {
   min-height: 40px;
   border: 1px solid #b5c3cc;
   border-radius: 6px;
   padding: 7px 10px;
   background: #fbfdff;
+}
+
+select {
+  cursor: pointer;
 }
 
 button,
@@ -157,6 +163,24 @@ button:disabled {
   font-size: 1.7rem;
 }
 
+.results-filter {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.results-filter label {
+  min-width: 220px;
+}
+
+.results-filter > span {
+  color: #5c7280;
+  font-size: 0.9rem;
+}
+
 .table-wrap {
   overflow: auto;
   border: 1px solid #d5e0e7;
@@ -200,7 +224,8 @@ tr.warn td {
   }
 
   .masthead,
-  .results-top {
+  .results-top,
+  .results-filter {
     align-items: stretch;
     flex-direction: column;
   }

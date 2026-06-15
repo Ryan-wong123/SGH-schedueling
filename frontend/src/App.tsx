@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { generateAllocation, previewWorkbookDownloadUrl, workbookDownloadUrl } from "./api/client";
 import { ErrorMessage } from "./components/ErrorMessage";
 import { ResultsTable } from "./components/ResultsTable";
@@ -10,11 +10,13 @@ export default function App() {
   const [result, setResult] = useState<GenerateAllocationResponse | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [dateFilter, setDateFilter] = useState("");
 
   async function handleGenerate(formData: FormData) {
     setLoading(true);
     setError("");
     setResult(null);
+    setDateFilter("");
     try {
       setResult(await generateAllocation(formData));
     } catch (err) {
@@ -23,6 +25,21 @@ export default function App() {
       setLoading(false);
     }
   }
+
+  const allocatedRecords = useMemo(
+    () => result?.records.filter((record) => record.status === "Allocated") ?? [],
+    [result],
+  );
+
+  const allocationDates = useMemo(
+    () => Array.from(new Set(allocatedRecords.map((record) => record.date).filter(Boolean))).sort(),
+    [allocatedRecords],
+  );
+
+  const filteredRecords = useMemo(
+    () => (dateFilter ? allocatedRecords.filter((record) => record.date === dateFilter) : allocatedRecords),
+    [allocatedRecords, dateFilter],
+  );
 
   return (
     <main className="app-shell">
@@ -52,7 +69,23 @@ export default function App() {
                 Download new allocation
               </a>
             </div>
-            <ResultsTable records={result.records.filter((record) => record.status === "Allocated")} />
+            <div className="results-filter">
+              <label>
+                <span>Filter by date</span>
+                <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)}>
+                  <option value="">All dates</option>
+                  {allocationDates.map((date) => (
+                    <option key={date} value={date}>
+                      {date}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span>
+                Showing {filteredRecords.length} of {allocatedRecords.length} allocated records
+              </span>
+            </div>
+            <ResultsTable records={filteredRecords} />
           </section>
         )}
       </section>
