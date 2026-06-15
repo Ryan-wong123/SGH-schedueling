@@ -83,6 +83,10 @@ async def generate_allocation(
             "success": True,
             "summary": summarize_records(records),
             "records": [record.to_api_dict() for record in records[:500]],
+            "roster": {
+                "allAssessors": roster_data.all_assessors,
+                "availableAssessorsByDate": roster_data.available_assessors_by_date,
+            },
             "download_id": download_id,
             "preview_download_id": preview_download_id,
         }

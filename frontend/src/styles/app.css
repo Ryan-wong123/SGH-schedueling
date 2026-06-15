@@ -181,6 +181,55 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+.unallocated-assessors-panel {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  gap: 16px;
+  border: 1px solid #d5e0e7;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 14px;
+  background: #f7fafc;
+}
+
+.unallocated-assessors-panel span {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #5c7280;
+}
+
+.unallocated-assessors-panel strong {
+  display: block;
+  font-size: 1.7rem;
+}
+
+.unallocated-assessors-panel p {
+  margin: 4px 0 0;
+  color: #5c7280;
+  font-size: 0.9rem;
+}
+
+.unallocated-assessors-panel ul {
+  display: flex;
+  align-content: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  max-height: 150px;
+  overflow: auto;
+  padding: 0;
+}
+
+.unallocated-assessors-panel li {
+  background: #ffffff;
+  border: 1px solid #cad6de;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 0.9rem;
+}
+
 .table-wrap {
   overflow: auto;
   border: 1px solid #d5e0e7;
@@ -225,9 +274,14 @@ tr.warn td {
 
   .masthead,
   .results-top,
-  .results-filter {
+  .results-filter,
+  .unallocated-assessors-panel {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .unallocated-assessors-panel {
+    grid-template-columns: 1fr;
   }
 
   .upload-panel {

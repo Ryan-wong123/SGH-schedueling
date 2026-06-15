@@ -32,6 +32,7 @@ def build_roster_workbook() -> Workbook:
 def test_roster_parser_uses_second_sheet_white_cells_for_ward_assessors_and_assessees() -> None:
     roster = parse_roster(build_roster_workbook())
     assert roster.available_assessors_by_date == {"15/04/26": ["Genevieve Subur"]}
+    assert roster.all_assessors == ["Genevieve Subur"]
     assert roster.available_assessors_by_date_location == {
         "15/04/26": {
             "OPS": ["Genevieve Subur"],
