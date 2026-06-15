@@ -186,7 +186,17 @@ def parse_roster(workbook) -> RosterData:
         raise AppError("Unable to detect GLF availability in the roster workbook.")
     if not entries:
         raise AppError("Unable to detect assessee locations in the roster workbook.")
-    return RosterData(dict(available), dict(entries), location_availability, ward_assessors_by_source_cell)
+    all_assessors = sorted(
+        {assessor for assessors in available.values() for assessor in assessors},
+        key=normalize_name,
+    )
+    return RosterData(
+        dict(available),
+        dict(entries),
+        location_availability,
+        ward_assessors_by_source_cell,
+        all_assessors,
+    )
 
 
 def find_roster_entries(roster: RosterData, assessee_name: str) -> List[RosterEntry]:

@@ -28,10 +28,16 @@ export interface AllocationSummary {
   skipped: number;
 }
 
+export interface RosterSummary {
+  allAssessors: string[];
+  availableAssessorsByDate: Record<string, string[]>;
+}
+
 export interface GenerateAllocationResponse {
   success: boolean;
   summary: AllocationSummary;
   records: AllocationRecord[];
+  roster: RosterSummary;
   download_id: string;
   preview_download_id: string;
 }
