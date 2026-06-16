@@ -103,6 +103,7 @@ The second worksheet contains Ward allocation information and must be used for W
 In the first worksheet of the roster workbook:
 
 - Rows with the `GLF` cell highlighted yellow are assessors who are free for the whole day.
+- Rows with the `/GLF` cell highlighted yellow are assessors who are free for a half day.
 - These assessors are eligible to perform non-ward assessments for assessees on that GLF availability date.
 
 The system must identify assessors with GLF availability by reading the cell fill colour.
@@ -557,6 +558,7 @@ The backend API response should still return allocation records for preview in t
 - Assessee Location
 - Assigned Assessor
 - Assessor GLF Availability Date
+- Assessor GLF Availability Type
 - Status
 - Reason if Unallocated or Skipped
 - Original GLF Cell Reference
@@ -564,7 +566,7 @@ The backend API response should still return allocation records for preview in t
 
 For website preview output, the `Assessee Location` value must include the ward label in brackets for Ward allocations when available, for example `Ward (42A (1-8) RS-2)`. OPS allocations should continue to display as `OPS`.
 
-For OPS allocations, the `Assessee Location` value must include the OPS shift label in brackets when available from the green OPS roster cell, for example `OPS (A)`, `OPS (C)`, `OPS (D)`, or `OPS (?)`. If the workbook uses more specific labels such as `C1` or `C2`, preserve that label as written, for example `OPS (C1)`.
+For OPS allocations, the `Assessee Location` value must include the OPS shift label in brackets when available from the green OPS roster cell, for example `OPS (A)`, `OPS (C)`, `OPS (D)`, or `OPS (ICT)`. If the workbook uses more specific labels such as `C1`, `C2`, or `X(C1)`, preserve the shift label as `OPS (C1)` or `OPS (C2)`.
 
 The API response should also return roster availability metadata for the generated result, including:
 
@@ -589,6 +591,7 @@ This workbook must:
   - Assessment
   - Location
   - Assessor
+  - GLF Type
   - Status
   - Reason
   - Cell
@@ -611,13 +614,13 @@ Use only these status values:
 
 ### 10.3 Example API Preview Rows
 
-| Date | Assessee Name | GLF Section Header | Assessment Type | Assessee Location | Assigned Assessor | Assessor GLF Availability Date | Status | Reason if Unallocated or Skipped | Original GLF Cell Reference | Existing Allocation History |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 10/03/26 | Amanda Chua Jing Yi | Y1 | Rx Check | Ward (42A (1-8) RS-2) | Cheryl | 10/03/26 | Allocated |  | G45 |  |
-| 15/04/26 | Celine Sia Si Lin | Y2 | Med Recon | Ward (45A) | Gen | 15/04/26 | Allocated |  | I46 |  |
-| 08/04/26 | Chan Xiao Ting, Kristy | Y3 | MiniCeX | Ward |  |  | Skipped - Already Allocated | Existing allocation found | J47 | Cheryl 08/04/26 |
-| 22/04/26 | Megan Goh | Y3 | Dispensing | OPS (C1) |  |  | Unallocated | No available assessor with OPS-compatible availability | H23 |  |
-|  | Denise Song | Y4 | Rx Check |  |  |  | Skipped - Already Passed | Black-filled cell | G23 |  |
+| Date | Assessee Name | GLF Section Header | Assessment Type | Assessee Location | Assigned Assessor | Assessor GLF Availability Date | Assessor GLF Availability Type | Status | Reason if Unallocated or Skipped | Original GLF Cell Reference | Existing Allocation History |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 10/03/26 | Amanda Chua Jing Yi | Y1 | Rx Check | Ward (42A (1-8) RS-2) | Cheryl | 10/03/26 | Full day GLF | Allocated |  | G45 |  |
+| 15/04/26 | Celine Sia Si Lin | Y2 | Med Recon | Ward (45A) | Gen | 15/04/26 | Half day GLF | Allocated |  | I46 |  |
+| 08/04/26 | Chan Xiao Ting, Kristy | Y3 | MiniCeX | Ward |  |  |  | Skipped - Already Allocated | Existing allocation found | J47 | Cheryl 08/04/26 |
+| 22/04/26 | Megan Goh | Y3 | Dispensing | OPS (C1) |  |  |  | Unallocated | No available assessor with OPS-compatible availability | H23 |  |
+|  | Denise Song | Y4 | Rx Check |  |  |  |  | Skipped - Already Passed | Black-filled cell | G23 |  |
 
 ---
 
@@ -662,6 +665,7 @@ After processing, show:
 6. Download new-allocation workbook button
 7. Start date and end date controls for filtering allocated preview records by allocation date
 8. A list of assessors who were rostered as GLF/available during the selected date range but were not assigned any assessee in the filtered allocation records
+9. A `GLF Type` column showing whether the assigned assessor was `Full day GLF` or `Half day GLF`
 
 ### 11.4 Date Range Filter
 
@@ -893,6 +897,7 @@ interface AllocationRecord {
   assesseeLocation: string;
   assignedAssessor: string;
   assessorGlfAvailabilityDate: string;
+  assessorGlfAvailabilityType: string;
   status: AllocationStatus;
   reason: string;
   originalGlfCellReference: string;

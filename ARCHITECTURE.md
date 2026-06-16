@@ -267,6 +267,7 @@ Responsibilities:
 - Read the first worksheet of the Roster Ward Allocation Workbook for OPS entries and non-ward GLF availability.
 - Read the second worksheet of the Roster Ward Allocation Workbook for Ward allocation.
 - Detect assessors with GLF availability.
+- Classify yellow `GLF` cells as `Full day GLF` and yellow `/GLF` cells as `Half day GLF`.
 - Detect assessee schedule date and location.
 - Classify roster cell colours:
   - Yellow = GLF available assessor
@@ -288,6 +289,7 @@ RosterData
 This should include:
 
 - Available assessors by date
+- GLF availability type by assessor and date
 - All detected available assessors
 - Assessee locations by date
 - Ward location labels for Ward assessees where available
@@ -328,7 +330,8 @@ Responsibilities:
 - Highlight successfully allocated copied assessment cells with a blue fill after writing assessor/date text.
 - Save the updated workbook for download.
 - Create a separate new-allocation workbook from allocated preview records.
-- Use the preview columns `Date`, `Assessee`, `Header`, `Assessment`, `Location`, `Assessor`, `Status`, `Reason`, and `Cell`.
+- Use the preview columns `Date`, `Assessee`, `Header`, `Assessment`, `Location`, `Assessor`, `GLF Type`, `Status`, `Reason`, and `Cell`.
+- Populate `GLF Type` with `Full day GLF` or `Half day GLF`.
 
 ---
 
@@ -419,6 +422,7 @@ Responsibilities:
 - Show the GLF section header beside the assessee.
 - Show Ward locations with the ward label in brackets when available.
 - Show OPS locations with the OPS shift label in brackets when available.
+- Show whether the assigned assessor was full-day or half-day GLF.
 - Show status and reasons.
 - Allow user to inspect unallocated records.
 - Support filtering allocated preview rows by selected start and end dates.
@@ -551,13 +555,14 @@ The website preview table should show a display-oriented subset of the allocatio
 | Assessment | Assessment Type |
 | Location | Assessee Location |
 | Assessor | Assigned Assessor |
+| GLF Type | Assessor GLF Availability Type |
 | Status | Status |
 | Reason | Reason or Existing Allocation History |
 | Cell | Original GLF Cell Reference |
 
 For Ward allocations, `Assessee Location` should include the ward label in brackets when it is available from the roster second worksheet row heading, for example `Ward (42A (1-8) RS-2)`.
 
-For OPS allocations, `Assessee Location` should include the OPS shift label in brackets when it is available from the green OPS roster cell, for example `OPS (A)`, `OPS (C)`, `OPS (D)`, `OPS (?)`, or `OPS (C1)`. If no shift label is available, display `OPS`.
+For OPS allocations, `Assessee Location` should include the OPS shift label in brackets when it is available from the green OPS roster cell, for example `OPS (A)`, `OPS (C)`, `OPS (D)`, `OPS (ICT)`, or `OPS (C1)`. If no shift label is available, display `OPS`.
 
 The separate new-allocation workbook should contain the same display-oriented preview columns and only successfully allocated rows. It is a separate `.xlsx` artifact and does not replace the full updated GLF workbook.
 

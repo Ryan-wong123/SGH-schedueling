@@ -15,6 +15,7 @@ export interface AllocationRecord {
   assesseeLocation: string;
   assignedAssessor: string;
   assessorGlfAvailabilityDate: string;
+  assessorGlfAvailabilityType: string;
   status: AllocationStatus;
   reason: string;
   originalGlfCellReference: string;

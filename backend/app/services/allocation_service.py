@@ -7,6 +7,7 @@ from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 from app.models.allocation import (
     AllocationRecord,
     AssessmentType,
+    GlfAvailabilityType,
     GlfAssessmentNeed,
     LocationType,
     REPEAT_AVOIDANCE_ASSESSMENTS,
@@ -108,6 +109,10 @@ def _display_location(entry: Optional[RosterEntry]) -> str:
     if entry.location == "OPS" and entry.ops_shift:
         return f"OPS ({entry.ops_shift})"
     return entry.location
+
+
+def _availability_type_for_assessor(roster: RosterData, date_text: str, assessor_name: str) -> GlfAvailabilityType:
+    return roster.assessor_availability_type_by_date.get(date_text, {}).get(normalize_name(assessor_name), "")
 
 
 def _skipped_record(need: GlfAssessmentNeed) -> AllocationRecord:
@@ -223,6 +228,7 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
                 assessee_location=_display_location(entry),
                 assigned_assessor=assessor,
                 assessor_glf_availability_date=entry.date,
+                assessor_glf_availability_type=_availability_type_for_assessor(roster, entry.date, assessor),
                 status="Allocated",
                 reason=reason,
                 original_glf_cell_reference=need.original_glf_cell_reference,

@@ -130,6 +130,8 @@ Do not try to implement everything in one large change. Complete the project in 
 - [ ] Read the first worksheet for OPS entries and non-ward GLF availability.
 - [ ] Read the second worksheet for Ward date/location allocation.
 - [ ] Detect assessors with yellow GLF availability.
+- [ ] Treat yellow `GLF` cells as full-day GLF availability.
+- [ ] Treat yellow `/GLF` cells as half-day GLF availability.
 - [ ] Extract assessor names and GLF availability dates.
 - [ ] Detect assessee rows and roster dates.
 - [ ] Detect location from colour-coded cells:
@@ -251,6 +253,7 @@ Do not try to implement everything in one large change. Complete the project in 
 - [ ] Show preview records.
 - [ ] Show Ward locations with ward numbers when available.
 - [ ] Show OPS locations with shift labels when available.
+- [ ] Show assigned assessor GLF type as `Full day GLF` or `Half day GLF`.
 - [ ] Include status and reason columns.
 - [ ] Highlight unallocated records visually.
 - [ ] Add download button.

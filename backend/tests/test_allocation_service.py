@@ -162,6 +162,19 @@ def test_ops_allocation_displays_shift_label() -> None:
     assert records[0].assessee_location == "OPS (C1)"
 
 
+def test_allocation_records_assessor_glf_availability_type() -> None:
+    roster = RosterData(
+        available_assessors_by_date={"15/04/26": ["Assessor A"]},
+        assessee_entries_by_name={
+            "person": [RosterEntry("Person", "15/04/26", "OPS")],
+        },
+        assessor_availability_type_by_date={"15/04/26": {"assessor a": "Half day GLF"}},
+    )
+    records = allocate_assessments([make_need("Person", "Dispensing")], roster)
+    assert records[0].status == "Allocated"
+    assert records[0].assessor_glf_availability_type == "Half day GLF"
+
+
 def test_summary_counts_skipped() -> None:
     skipped = GlfAssessmentNeed(
         assessee_name="Person",
