@@ -137,12 +137,16 @@ Do not try to implement everything in one large change. Complete the project in 
   - White cells in worksheet 2 = Ward
 - [ ] Treat white Ward cells containing `{...}` as occupied/manual cells that are ignored entirely for automatic allocation, including names inside and outside the braces.
 - [ ] Treat white Ward cells without `{...}` as Ward assessor availability.
+- [ ] Preserve OPS shift labels from green OPS cells for preview output.
+- [ ] Preserve Ward number/location labels from column A on Ward rows for preview output.
 - [ ] Return all detected GLF/Ward available assessors.
 - [ ] Return available assessors grouped by roster date.
 - [ ] Return structured roster data.
 - [ ] Add tests to confirm both roster worksheets are used for their intended purposes.
 - [ ] Add tests for GLF availability detection.
 - [ ] Add tests for OPS/Ward location detection.
+- [ ] Add tests for OPS shift label extraction and display.
+- [ ] Add tests for Ward number/location label extraction and display.
 - [ ] Add tests that brace-containing Ward cells do not create automatic assessee entries or assessor availability.
 - [ ] Add tests for all-assessor roster metadata.
 
@@ -245,6 +249,8 @@ Do not try to implement everything in one large change. Complete the project in 
 - [ ] Show skipped count.
 - [ ] Create `ResultsTable.tsx`.
 - [ ] Show preview records.
+- [ ] Show Ward locations with ward numbers when available.
+- [ ] Show OPS locations with shift labels when available.
 - [ ] Include status and reason columns.
 - [ ] Highlight unallocated records visually.
 - [ ] Add download button.

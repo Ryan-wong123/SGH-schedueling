@@ -275,6 +275,7 @@ Responsibilities:
   - Non-white cells in worksheet 2 = ignored for Ward allocation
 - Treat white Ward cells containing `{...}` as occupied/manual Ward cells that are fully ignored for automatic allocation. Names inside and outside braces in those cells do not create assessee entries or assessor availability. White Ward cells without `{...}` provide Ward assessor availability.
 - Preserve the ward location label from column A for Ward preview output.
+- Preserve the OPS shift label from green OPS cells in the first worksheet for OPS preview output.
 - Collect all detected assessors with GLF or Ward availability and preserve availability grouped by date for frontend reporting.
 - Return structured roster data.
 
@@ -290,6 +291,7 @@ This should include:
 - All detected available assessors
 - Assessee locations by date
 - Ward location labels for Ward assessees where available
+- OPS shift labels for OPS assessees where available
 - Assessee roster entries
 
 ---
@@ -416,6 +418,7 @@ Responsibilities:
 - Display allocation preview rows.
 - Show the GLF section header beside the assessee.
 - Show Ward locations with the ward label in brackets when available.
+- Show OPS locations with the OPS shift label in brackets when available.
 - Show status and reasons.
 - Allow user to inspect unallocated records.
 - Support filtering allocated preview rows by selected start and end dates.
@@ -552,7 +555,9 @@ The website preview table should show a display-oriented subset of the allocatio
 | Reason | Reason or Existing Allocation History |
 | Cell | Original GLF Cell Reference |
 
-For Ward allocations, `Assessee Location` should include the ward label in brackets when it is available from the roster second worksheet row heading, for example `Ward (42A (1-8) RS-2)`. OPS allocations should display as `OPS`.
+For Ward allocations, `Assessee Location` should include the ward label in brackets when it is available from the roster second worksheet row heading, for example `Ward (42A (1-8) RS-2)`.
+
+For OPS allocations, `Assessee Location` should include the OPS shift label in brackets when it is available from the green OPS roster cell, for example `OPS (A)`, `OPS (C)`, `OPS (D)`, `OPS (?)`, or `OPS (C1)`. If no shift label is available, display `OPS`.
 
 The separate new-allocation workbook should contain the same display-oriented preview columns and only successfully allocated rows. It is a separate `.xlsx` artifact and does not replace the full updated GLF workbook.
 

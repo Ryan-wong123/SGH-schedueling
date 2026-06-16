@@ -113,6 +113,7 @@ For Ward allocation, the system must use the second worksheet:
 - White Ward cells containing `{...}` are occupied/manual Ward allocation cells and must be ignored entirely for automatic allocation. Names inside and outside `{...}` in that cell must not be treated as assessees or assessors.
 - White Ward cells without `{...}` identify Ward assessors available on that date.
 - The ward location label is taken from the same row's first column and should be preserved for preview output.
+- OPS shift labels are taken from green OPS cells in the first worksheet and should be preserved for preview output.
 - `floater` / `*floater*` text is a roster placeholder and must not be treated as an assessor or assessee.
 - Non-white cells in the second worksheet must be ignored for Ward allocation.
 
@@ -563,6 +564,8 @@ The backend API response should still return allocation records for preview in t
 
 For website preview output, the `Assessee Location` value must include the ward label in brackets for Ward allocations when available, for example `Ward (42A (1-8) RS-2)`. OPS allocations should continue to display as `OPS`.
 
+For OPS allocations, the `Assessee Location` value must include the OPS shift label in brackets when available from the green OPS roster cell, for example `OPS (A)`, `OPS (C)`, `OPS (D)`, or `OPS (?)`. If the workbook uses more specific labels such as `C1` or `C2`, preserve that label as written, for example `OPS (C1)`.
+
 The API response should also return roster availability metadata for the generated result, including:
 
 - All detected assessors with GLF or Ward availability.
@@ -590,6 +593,7 @@ This workbook must:
   - Reason
   - Cell
 - Preserve display-ready Ward locations such as `Ward (42A (1-8) RS-2)`.
+- Preserve display-ready OPS shift locations such as `OPS (C1)` or `OPS (D)`.
 - Be downloaded separately from the full updated GLF workbook.
 
 ### 10.2 Status Values
@@ -612,7 +616,7 @@ Use only these status values:
 | 10/03/26 | Amanda Chua Jing Yi | Y1 | Rx Check | Ward (42A (1-8) RS-2) | Cheryl | 10/03/26 | Allocated |  | G45 |  |
 | 15/04/26 | Celine Sia Si Lin | Y2 | Med Recon | Ward (45A) | Gen | 15/04/26 | Allocated |  | I46 |  |
 | 08/04/26 | Chan Xiao Ting, Kristy | Y3 | MiniCeX | Ward |  |  | Skipped - Already Allocated | Existing allocation found | J47 | Cheryl 08/04/26 |
-| 22/04/26 | Megan Goh | Y3 | Dispensing | OPS |  |  | Unallocated | No available assessor with OPS-compatible availability | H23 |  |
+| 22/04/26 | Megan Goh | Y3 | Dispensing | OPS (C1) |  |  | Unallocated | No available assessor with OPS-compatible availability | H23 |  |
 |  | Denise Song | Y4 | Rx Check |  |  |  | Skipped - Already Passed | Black-filled cell | G23 |  |
 
 ---
@@ -1079,11 +1083,12 @@ At minimum, test:
 23. Generated worksheet highlights newly allocated cells in blue.
 24. Preview records include the GLF section header beside the assessee.
 25. Preview records show Ward locations with the ward label in brackets when available.
-26. Output workbook can be downloaded.
-27. Separate new-allocation workbook can be downloaded.
-28. Separate new-allocation workbook matches the website preview output columns.
-29. Frontend allocated preview records can be filtered by selected start and end dates.
-30. Frontend shows rostered/available assessors who were not assigned any assessee in the selected date range.
+26. Preview records show OPS locations with the OPS shift label in brackets when available.
+27. Output workbook can be downloaded.
+28. Separate new-allocation workbook can be downloaded.
+29. Separate new-allocation workbook matches the website preview output columns.
+30. Frontend allocated preview records can be filtered by selected start and end dates.
+31. Frontend shows rostered/available assessors who were not assigned any assessee in the selected date range.
 
 ---
 
@@ -1136,8 +1141,9 @@ The project is complete when:
 23. The frontend shows allocation summary and preview.
 24. The frontend preview includes the GLF section header beside each assessee.
 25. The frontend preview shows Ward locations with the ward label in brackets when available.
-26. The frontend can filter allocated preview rows by selected start and end dates.
-27. The frontend shows assessors who were rostered as GLF/available in the selected date range but were not assigned any assessee.
-28. The system outputs a separate new-allocation workbook for download.
-29. The separate new-allocation workbook follows the website preview output.
-30. Errors are shown clearly to the user.
+26. The frontend preview shows OPS locations with the OPS shift label in brackets when available.
+27. The frontend can filter allocated preview rows by selected start and end dates.
+28. The frontend shows assessors who were rostered as GLF/available in the selected date range but were not assigned any assessee.
+29. The system outputs a separate new-allocation workbook for download.
+30. The separate new-allocation workbook follows the website preview output.
+31. Errors are shown clearly to the user.

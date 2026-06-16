@@ -1,7 +1,7 @@
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill
 
-from app.services.roster_parser import find_roster_entries, parse_roster
+from app.services.roster_parser import _ops_shift_text, find_roster_entries, parse_roster
 
 
 def build_roster_workbook() -> Workbook:
@@ -43,6 +43,7 @@ def test_roster_parser_uses_second_sheet_white_cells_for_ward_assessors_and_asse
     assert sorted((entry.date, entry.location) for entry in entries) == [
         ("16/04/26", "OPS"),
     ]
+    assert entries[0].ops_shift == "Clinic-1"
 
 
 def test_braced_ward_cell_is_fully_ignored_for_automatic_allocation() -> None:
@@ -50,3 +51,10 @@ def test_braced_ward_cell_is_fully_ignored_for_automatic_allocation() -> None:
     assert "Fiona Yeo" not in roster.available_assessors_by_date.get("15/04/26", [])
     entries = find_roster_entries(roster, "Amanda Chua Jing Yi")
     assert all(entry.source_cell != "B3" for entry in entries)
+
+
+def test_ops_shift_text_extracts_shift_code_or_preserves_label() -> None:
+    assert _ops_shift_text("X(C1)") == "C1"
+    assert _ops_shift_text("C1") == "C1"
+    assert _ops_shift_text("D") == "D"
+    assert _ops_shift_text("ICT") == "ICT"

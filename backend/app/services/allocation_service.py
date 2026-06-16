@@ -105,6 +105,8 @@ def _display_location(entry: Optional[RosterEntry]) -> str:
         return ""
     if entry.location == "Ward" and entry.ward_location:
         return f"Ward ({entry.ward_location})"
+    if entry.location == "OPS" and entry.ops_shift:
+        return f"OPS ({entry.ops_shift})"
     return entry.location
 
 
