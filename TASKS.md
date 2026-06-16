@@ -137,11 +137,14 @@ Do not try to implement everything in one large change. Complete the project in 
   - White cells in worksheet 2 = Ward
 - [ ] Treat white Ward cells containing `{...}` as occupied/manual cells that are ignored entirely for automatic allocation, including names inside and outside the braces.
 - [ ] Treat white Ward cells without `{...}` as Ward assessor availability.
+- [ ] Return all detected GLF/Ward available assessors.
+- [ ] Return available assessors grouped by roster date.
 - [ ] Return structured roster data.
 - [ ] Add tests to confirm both roster worksheets are used for their intended purposes.
 - [ ] Add tests for GLF availability detection.
 - [ ] Add tests for OPS/Ward location detection.
 - [ ] Add tests that brace-containing Ward cells do not create automatic assessee entries or assessor availability.
+- [ ] Add tests for all-assessor roster metadata.
 
 ---
 
@@ -246,6 +249,11 @@ Do not try to implement everything in one large change. Complete the project in 
 - [ ] Highlight unallocated records visually.
 - [ ] Add download button.
 - [ ] Wire download button to `/api/download/{download_id}`.
+- [ ] Add start date and end date controls for filtering allocated preview records.
+- [ ] Use detected allocation and roster dates as date range options.
+- [ ] Show count of filtered allocated records.
+- [ ] Show assessors rostered as GLF/available in the selected date range who were not assigned any assessee.
+- [ ] Confirm date range filtering does not change generated workbook downloads.
 
 ---
 
@@ -294,6 +302,8 @@ The MVP is complete when all these are true:
 - [ ] Backend preserves all original worksheets.
 - [ ] User can download the updated workbook.
 - [ ] Frontend shows summary and preview records.
+- [ ] Frontend filters allocated preview records by selected date range.
+- [ ] Frontend shows GLF/available assessors with no assigned assessee in the selected date range.
 
 ---
 

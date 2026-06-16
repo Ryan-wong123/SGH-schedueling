@@ -147,7 +147,7 @@ Purpose:
 
 - Accept uploaded workbooks and GLF password.
 - Process allocation.
-- Return summary, preview records, full GLF workbook download ID, and new-allocation workbook download ID.
+- Return summary, preview records, roster availability metadata, full GLF workbook download ID, and new-allocation workbook download ID.
 
 Request:
 
@@ -174,6 +174,10 @@ Response:
     "skipped": 0
   },
   "records": [],
+  "roster": {
+    "allAssessors": [],
+    "availableAssessorsByDate": {}
+  },
   "download_id": "string",
   "preview_download_id": "string"
 }
@@ -271,6 +275,7 @@ Responsibilities:
   - Non-white cells in worksheet 2 = ignored for Ward allocation
 - Treat white Ward cells containing `{...}` as occupied/manual Ward cells that are fully ignored for automatic allocation. Names inside and outside braces in those cells do not create assessee entries or assessor availability. White Ward cells without `{...}` provide Ward assessor availability.
 - Preserve the ward location label from column A for Ward preview output.
+- Collect all detected assessors with GLF or Ward availability and preserve availability grouped by date for frontend reporting.
 - Return structured roster data.
 
 Expected output:
@@ -282,6 +287,7 @@ RosterData
 This should include:
 
 - Available assessors by date
+- All detected available assessors
 - Assessee locations by date
 - Ward location labels for Ward assessees where available
 - Assessee roster entries
@@ -412,6 +418,15 @@ Responsibilities:
 - Show Ward locations with the ward label in brackets when available.
 - Show status and reasons.
 - Allow user to inspect unallocated records.
+- Support filtering allocated preview rows by selected start and end dates.
+
+#### Available/Unallocated Assessor Panel
+
+Responsibilities:
+
+- Use roster availability metadata returned by the backend.
+- For the selected date range, show assessors who were rostered as GLF/available but were not assigned to any assessee in the filtered allocated records.
+- Treat the panel as display-only; it does not change allocation output or downloadable workbooks.
 
 #### `ErrorMessage.tsx`
 
@@ -541,6 +556,16 @@ For Ward allocations, `Assessee Location` should include the ward label in brack
 
 The separate new-allocation workbook should contain the same display-oriented preview columns and only successfully allocated rows. It is a separate `.xlsx` artifact and does not replace the full updated GLF workbook.
 
+The frontend results view should also provide start-date and end-date controls. These controls filter the displayed allocated preview rows only; they do not alter backend allocation records or generated workbooks. Date options should come from allocation record dates and roster availability dates.
+
+The same selected date range should drive an informational list of assessors who were rostered as GLF/available in that range but were not assigned any assessee in the filtered allocated preview records. The calculation is:
+
+```text
+available assessors by date in selected range
+minus
+assigned assessors in filtered allocated records
+```
+
 ---
 
 ## 10. Security and Privacy Notes
@@ -581,3 +606,7 @@ Test the logic in layers:
    - File validation
    - Wrong password handling
    - Successful allocation response
+   - Roster availability metadata in successful allocation response
+6. Frontend tests or manual verification
+   - Date range filtering of allocated preview rows
+   - Available-but-not-allocated assessor list for selected date range

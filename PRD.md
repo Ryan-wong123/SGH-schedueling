@@ -77,6 +77,8 @@ The website should have a simple workflow:
    - Allocated records
    - Skipped records
    - Unallocated records with reasons
+   - Date range controls for filtering allocated preview records
+   - Assessors who were rostered as GLF/available in the selected date range but were not allocated any assessee
 7. User can download the updated GLF workbook.
 8. User can download a separate new-allocation workbook that matches the website preview output.
 
@@ -561,6 +563,13 @@ The backend API response should still return allocation records for preview in t
 
 For website preview output, the `Assessee Location` value must include the ward label in brackets for Ward allocations when available, for example `Ward (42A (1-8) RS-2)`. OPS allocations should continue to display as `OPS`.
 
+The API response should also return roster availability metadata for the generated result, including:
+
+- All detected assessors with GLF or Ward availability.
+- Available assessors grouped by roster date.
+
+The frontend uses this metadata only for display and filtering after generation; it must not alter the allocation records or generated workbooks.
+
 ### 10.1 New-Allocation Workbook Format
 
 In addition to the full updated GLF workbook, the backend must create a separate workbook for the newly generated allocation preview.
@@ -647,8 +656,39 @@ After processing, show:
 4. Preview table of generated records
 5. Download updated GLF workbook button
 6. Download new-allocation workbook button
+7. Start date and end date controls for filtering allocated preview records by allocation date
+8. A list of assessors who were rostered as GLF/available during the selected date range but were not assigned any assessee in the filtered allocation records
 
-### 11.4 Error Display
+### 11.4 Date Range Filter
+
+The results view must let the user choose a start date and end date from dates detected in the generated allocation records and roster availability metadata.
+
+Rules:
+
+- If no start date is selected, use the earliest available date.
+- If no end date is selected, use the latest available date.
+- If the user selects the dates in reverse order, treat the earlier selected date as the start and the later selected date as the end.
+- Filter the website allocation preview table to allocated records whose allocation date is inside the selected range.
+- The date range filter is a website preview feature only. It must not change the generated GLF workbook or the separate new-allocation workbook.
+
+### 11.5 Available But Not Allocated Assessors
+
+For the selected date range, the results view must show assessors who:
+
+1. Were detected as GLF/available assessors in the roster workbook for at least one date in the selected range.
+2. Were not assigned to any assessee in the filtered allocation records for that same selected range.
+
+This list is calculated as:
+
+```text
+rostered/available assessors in selected date range
+minus
+assessors assigned at least one assessee in selected date range
+```
+
+This list is informational only. It must not create, remove, or change allocations.
+
+### 11.6 Error Display
 
 Show clear error messages for:
 
@@ -715,6 +755,10 @@ If successful, return JSON containing:
     "skipped": 0
   },
   "records": [],
+  "roster": {
+    "allAssessors": [],
+    "availableAssessorsByDate": {}
+  },
   "download_id": "string",
   "preview_download_id": "string"
 }
@@ -1038,6 +1082,8 @@ At minimum, test:
 26. Output workbook can be downloaded.
 27. Separate new-allocation workbook can be downloaded.
 28. Separate new-allocation workbook matches the website preview output columns.
+29. Frontend allocated preview records can be filtered by selected start and end dates.
+30. Frontend shows rostered/available assessors who were not assigned any assessee in the selected date range.
 
 ---
 
@@ -1090,6 +1136,8 @@ The project is complete when:
 23. The frontend shows allocation summary and preview.
 24. The frontend preview includes the GLF section header beside each assessee.
 25. The frontend preview shows Ward locations with the ward label in brackets when available.
-26. The system outputs a separate new-allocation workbook for download.
-27. The separate new-allocation workbook follows the website preview output.
-28. Errors are shown clearly to the user.
+26. The frontend can filter allocated preview rows by selected start and end dates.
+27. The frontend shows assessors who were rostered as GLF/available in the selected date range but were not assigned any assessee.
+28. The system outputs a separate new-allocation workbook for download.
+29. The separate new-allocation workbook follows the website preview output.
+30. Errors are shown clearly to the user.
