@@ -4,7 +4,7 @@ from collections import defaultdict
 import re
 from typing import DefaultDict, Dict, List, Tuple
 
-from app.models.allocation import LocationType, RosterData, RosterEntry
+from app.models.allocation import GlfAvailabilityType, LocationType, RosterData, RosterEntry
 from app.utils.colours import classify_location_from_fill, is_green_fill, is_white_fill, is_yellow_fill
 from app.utils.dates import format_date, parse_date
 from app.utils.errors import AppError
@@ -83,18 +83,34 @@ def _extract_ward_cell_people(value: object) -> Tuple[List[str], List[str]]:
 def _add_available(
     available: Dict[str, List[str]],
     available_by_location: Dict[str, Dict[LocationType, List[str]]],
+    availability_type_by_date: Dict[str, Dict[str, GlfAvailabilityType]],
     date_text: str,
     location: LocationType,
     assessor_name: str,
+    availability_type: GlfAvailabilityType = "Full day GLF",
 ) -> None:
     available[date_text].append(assessor_name)
     available_by_location[date_text][location].append(assessor_name)
+    assessor_key = normalize_name(assessor_name)
+    current = availability_type_by_date[date_text].get(assessor_key)
+    if current != "Half day GLF":
+        availability_type_by_date[date_text][assessor_key] = availability_type
+
+
+def _glf_availability_type(value: object) -> GlfAvailabilityType:
+    text = str(value).replace("\xa0", " ").strip().casefold() if value is not None else ""
+    if text == "/glf":
+        return "Half day GLF"
+    if text == "glf":
+        return "Full day GLF"
+    return ""
 
 
 def _parse_primary_roster_sheet(
     ws,
     available: Dict[str, List[str]],
     available_by_location: Dict[str, Dict[LocationType, List[str]]],
+    availability_type_by_date: Dict[str, Dict[str, GlfAvailabilityType]],
     entries: Dict[str, List[RosterEntry]],
 ) -> None:
     date_row, date_columns = _find_date_columns(ws)
@@ -110,8 +126,17 @@ def _parse_primary_roster_sheet(
             cell = ws.cell(row_index, col)
             value = cell.value
             text = str(value).strip() if value is not None else ""
-            if text.casefold() == "glf" and is_yellow_fill(cell):
-                _add_available(available, available_by_location, date_text, "OPS", name)
+            availability_type = _glf_availability_type(text)
+            if availability_type and is_yellow_fill(cell):
+                _add_available(
+                    available,
+                    available_by_location,
+                    availability_type_by_date,
+                    date_text,
+                    "OPS",
+                    name,
+                    availability_type,
+                )
                 continue
             if not _is_schedule_value(value) or not is_green_fill(cell):
                 continue
@@ -132,6 +157,7 @@ def _parse_ward_roster_sheet(
     ws,
     available: Dict[str, List[str]],
     available_by_location: Dict[str, Dict[LocationType, List[str]]],
+    availability_type_by_date: Dict[str, Dict[str, GlfAvailabilityType]],
     entries: Dict[str, List[RosterEntry]],
     ward_assessors_by_source_cell: Dict[str, List[str]],
 ) -> None:
@@ -151,7 +177,7 @@ def _parse_ward_roster_sheet(
             assessors, assessees = _extract_ward_cell_people(cell.value)
             ward_assessors_by_source_cell[cell.coordinate] = assessors
             for assessor in assessors:
-                _add_available(available, available_by_location, date_text, "Ward", assessor)
+                _add_available(available, available_by_location, availability_type_by_date, date_text, "Ward", assessor)
             for name in assessees:
                 _add_entry(
                     entries,
@@ -173,14 +199,16 @@ def parse_roster(workbook) -> RosterData:
     available_by_location: DefaultDict[str, DefaultDict[LocationType, List[str]]] = defaultdict(
         lambda: defaultdict(list)
     )
+    availability_type_by_date: DefaultDict[str, Dict[str, GlfAvailabilityType]] = defaultdict(dict)
     entries: DefaultDict[str, List[RosterEntry]] = defaultdict(list)
     ward_assessors_by_source_cell: Dict[str, List[str]] = {}
 
-    _parse_primary_roster_sheet(workbook.worksheets[0], available, available_by_location, entries)
+    _parse_primary_roster_sheet(workbook.worksheets[0], available, available_by_location, availability_type_by_date, entries)
     _parse_ward_roster_sheet(
         workbook.worksheets[1],
         available,
         available_by_location,
+        availability_type_by_date,
         entries,
         ward_assessors_by_source_cell,
     )
@@ -209,6 +237,7 @@ def parse_roster(workbook) -> RosterData:
         location_availability,
         ward_assessors_by_source_cell,
         all_assessors,
+        {date_text: dict(types) for date_text, types in availability_type_by_date.items()},
     )
 
 

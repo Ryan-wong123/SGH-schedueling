@@ -5,6 +5,7 @@ from typing import Dict, List, Literal, Optional, Tuple
 
 AssessmentType = Literal["Rx Check", "Dispensing", "Med Recon", "MiniCeX"]
 LocationType = Literal["Ward", "OPS", "Unknown"]
+GlfAvailabilityType = Literal["Full day GLF", "Half day GLF", ""]
 AllocationStatus = Literal[
     "Allocated",
     "Unallocated",
@@ -48,6 +49,7 @@ class RosterData:
     available_assessors_by_date_location: Dict[str, Dict[LocationType, List[str]]] = field(default_factory=dict)
     ward_assessors_by_source_cell: Dict[str, List[str]] = field(default_factory=dict)
     all_assessors: List[str] = field(default_factory=list)
+    assessor_availability_type_by_date: Dict[str, Dict[str, GlfAvailabilityType]] = field(default_factory=dict)
 
 
 @dataclass
@@ -62,6 +64,7 @@ class AllocationRecord:
     reason: str
     original_glf_cell_reference: str
     existing_allocation_history: str
+    assessor_glf_availability_type: GlfAvailabilityType = ""
     glf_section_header: str = ""
 
     def to_api_dict(self) -> Dict[str, str]:
@@ -73,6 +76,7 @@ class AllocationRecord:
             "assesseeLocation": self.assessee_location,
             "assignedAssessor": self.assigned_assessor,
             "assessorGlfAvailabilityDate": self.assessor_glf_availability_date,
+            "assessorGlfAvailabilityType": self.assessor_glf_availability_type,
             "status": self.status,
             "reason": self.reason,
             "originalGlfCellReference": self.original_glf_cell_reference,
@@ -88,6 +92,7 @@ class AllocationRecord:
             self.assessee_location,
             self.assigned_assessor,
             self.assessor_glf_availability_date,
+            self.assessor_glf_availability_type,
             self.status,
             self.reason,
             self.original_glf_cell_reference,

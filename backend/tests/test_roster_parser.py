@@ -14,6 +14,9 @@ def build_roster_workbook() -> Workbook:
     ws["A5"] = "Genevieve Subur"
     ws["B5"] = "GLF"
     ws["B5"].fill = PatternFill(fill_type="solid", fgColor="FFFFFF00")
+    ws["A7"] = "Khoo Sher Ri"
+    ws["C7"] = "/GLF"
+    ws["C7"].fill = PatternFill(fill_type="solid", fgColor="FFFFFF00")
     ws["A6"] = "Amanda Chua"
     ws["B6"] = "42A"
     ws["B6"].fill = PatternFill(fill_type="solid", fgColor="FFFBE2D5")
@@ -31,12 +34,22 @@ def build_roster_workbook() -> Workbook:
 
 def test_roster_parser_uses_second_sheet_white_cells_for_ward_assessors_and_assessees() -> None:
     roster = parse_roster(build_roster_workbook())
-    assert roster.available_assessors_by_date == {"15/04/26": ["Genevieve Subur"]}
-    assert roster.all_assessors == ["Genevieve Subur"]
+    assert roster.available_assessors_by_date == {
+        "15/04/26": ["Genevieve Subur"],
+        "16/04/26": ["Khoo Sher Ri"],
+    }
+    assert roster.all_assessors == ["Genevieve Subur", "Khoo Sher Ri"]
+    assert roster.assessor_availability_type_by_date == {
+        "15/04/26": {"genevieve subur": "Full day GLF"},
+        "16/04/26": {"khoo sher ri": "Half day GLF"},
+    }
     assert roster.available_assessors_by_date_location == {
         "15/04/26": {
             "OPS": ["Genevieve Subur"],
-        }
+        },
+        "16/04/26": {
+            "OPS": ["Khoo Sher Ri"],
+        },
     }
     assert roster.ward_assessors_by_source_cell["B3"] == []
     entries = find_roster_entries(roster, "Amanda Chua Jing Yi")
