@@ -13,6 +13,7 @@ from app.utils.names import names_prefix_match, normalize_name
 
 SKIP_ROSTER_VALUES = {"", "glf", "x", "off", "al", "mc", "leave", "hl", "ops", "floater"}
 BRACED_TEXT_PATTERN = re.compile(r"\{([^{}]+)\}")
+OPS_SHIFT_PATTERN = re.compile(r"\b([A-F](?:[12]|\+)?)\b|\(([A-F](?:[12]|\+)?)\)|(\?)", re.IGNORECASE)
 
 
 def _find_date_columns(ws) -> Tuple[int, Dict[int, str]]:
@@ -57,6 +58,17 @@ def _ward_location_text(value: object) -> str:
     if value is None:
         return ""
     return " ".join(str(value).replace("\xa0", " ").split())
+
+
+def _ops_shift_text(value: object) -> str:
+    if value is None:
+        return ""
+    text = " ".join(str(value).replace("\xa0", " ").split())
+    for match in OPS_SHIFT_PATTERN.finditer(text):
+        shift = next((group for group in match.groups() if group), "")
+        if shift:
+            return shift.upper()
+    return text
 
 
 def _extract_ward_cell_people(value: object) -> Tuple[List[str], List[str]]:
@@ -111,6 +123,7 @@ def _parse_primary_roster_sheet(
                     date=date_text,
                     location="OPS",
                     source_cell=cell.coordinate,
+                    ops_shift=_ops_shift_text(value),
                 ),
             )
 

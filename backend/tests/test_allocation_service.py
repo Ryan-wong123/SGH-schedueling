@@ -152,6 +152,16 @@ def test_ops_allocation_does_not_use_ward_assessors() -> None:
     assert records[0].status == "Unallocated"
 
 
+def test_ops_allocation_displays_shift_label() -> None:
+    roster = roster_for(
+        [RosterEntry("Person", "15/04/26", "OPS", ops_shift="C1")],
+        {"15/04/26": ["Assessor A"]},
+    )
+    records = allocate_assessments([make_need("Person", "Dispensing")], roster)
+    assert records[0].status == "Allocated"
+    assert records[0].assessee_location == "OPS (C1)"
+
+
 def test_summary_counts_skipped() -> None:
     skipped = GlfAssessmentNeed(
         assessee_name="Person",

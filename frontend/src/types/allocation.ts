@@ -1,5 +1,4 @@
 export type AssessmentType = "Rx Check" | "Dispensing" | "Med Recon" | "MiniCeX";
-export type LocationType = "Ward" | "OPS" | "Unknown" | "";
 export type AllocationStatus =
   | "Allocated"
   | "Unallocated"
@@ -13,7 +12,7 @@ export interface AllocationRecord {
   assesseeName: string;
   glfSectionHeader: string;
   assessmentType: AssessmentType;
-  assesseeLocation: LocationType;
+  assesseeLocation: string;
   assignedAssessor: string;
   assessorGlfAvailabilityDate: string;
   status: AllocationStatus;
