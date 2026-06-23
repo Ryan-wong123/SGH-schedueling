@@ -408,7 +408,7 @@ For Rx Check, Dispensing, Med Recon, and MiniCeX:
 
 - Avoid assigning the same assessor already used for that assessee in the GLF second worksheet, where possible.
 - Existing assessor history must be read from that assessee's Rx Check, Dispensing, Med Recon, and MiniCeX cells.
-- Do not treat new allocations made during the current generation as repeat history. Same-run allocations may reuse an assessor for the same assessee when that assessor still has capacity under the daily capacity rules.
+- Do not treat new allocations made during the current generation as repeat history. For the same assessee on the same date, prefer reusing the assessor already selected during the current generation when that assessor is eligible for the assessment location and still has capacity under the daily capacity rules.
 - If all eligible assessors were already used in the GLF second worksheet, choose the least recently used eligible assessor and mark the reason as:
 
 ```text

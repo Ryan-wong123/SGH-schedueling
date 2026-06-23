@@ -89,6 +89,28 @@ def _select_assessor(
     )[0]
 
 
+def _prefer_same_day_assessee_assessor(
+    candidates: List[str],
+    date_text: str,
+    assessee_name: str,
+    current_run_assignees: Dict[Tuple[str, str], List[str]],
+) -> List[str]:
+    same_assessee_key = (date_text, normalize_name(assessee_name))
+    previous_assessors = current_run_assignees.get(same_assessee_key, [])
+    if not previous_assessors:
+        return candidates
+
+    candidate_keys = {normalize_name(candidate) for candidate in candidates}
+    reusable = [
+        assessor
+        for assessor in previous_assessors
+        if normalize_name(assessor) in candidate_keys
+    ]
+    if reusable:
+        return reusable
+    return candidates
+
+
 def _available_assessors_for_entry(roster: RosterData, entry: RosterEntry) -> List[str]:
     if entry.location == "Ward" and entry.source_cell in roster.ward_assessors_by_source_cell:
         return roster.ward_assessors_by_source_cell[entry.source_cell]
@@ -151,6 +173,7 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
     records: List[AllocationRecord] = []
     loads: DefaultDict[str, DefaultDict[str, AssessorLoad]] = defaultdict(lambda: defaultdict(AssessorLoad))
     last_used: Dict[Tuple[str, str], int] = {}
+    current_run_assignees: DefaultDict[Tuple[str, str], List[str]] = defaultdict(list)
     usage_counter = 0
 
     for need in needs:
@@ -208,6 +231,12 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
                 elif need.existing_assessors_for_row:
                     repeated_fallback = True
 
+            preferred = _prefer_same_day_assessee_assessor(
+                preferred,
+                entry.date,
+                need.assessee_name,
+                current_run_assignees,
+            )
             assessor = _select_assessor(preferred, entry.date, need.assessment_type, loads, last_used)
             if assessor is None:
                 continue
@@ -219,6 +248,9 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
                 load.minicex += 1
             usage_counter += 1
             last_used[(entry.date, assessor_key)] = usage_counter
+            same_assessee_key = (entry.date, normalize_name(need.assessee_name))
+            if assessor not in current_run_assignees[same_assessee_key]:
+                current_run_assignees[same_assessee_key].append(assessor)
             reason = "Repeated assessor used because no alternative eligible assessor was available." if repeated_fallback else ""
             allocation = AllocationRecord(
                 date=entry.date,
