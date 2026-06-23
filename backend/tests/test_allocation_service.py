@@ -87,6 +87,47 @@ def test_current_run_assignments_can_repeat_for_same_assessee_when_capacity_allo
     assert all(record.reason == "" for record in records)
 
 
+def test_same_day_same_assessee_prefers_current_run_assessor_before_round_robin() -> None:
+    roster = roster_for(
+        [RosterEntry("Jerald Tan", "15/04/26", "OPS", ops_shift="ICT")],
+        {"15/04/26": ["Genevieve Subur", "Khoo Sher Ri"]},
+    )
+    records = allocate_assessments(
+        [
+            make_need("Jerald Tan", "Rx Check", "G36"),
+            make_need("Jerald Tan", "Dispensing", "H36"),
+        ],
+        roster,
+    )
+    assert [record.assigned_assessor for record in records] == ["Genevieve Subur", "Genevieve Subur"]
+
+
+def test_same_day_same_assessee_reuse_still_requires_location_eligible_assessor() -> None:
+    roster = RosterData(
+        available_assessors_by_date={"15/04/26": ["OPS Assessor", "Ward Assessor"]},
+        assessee_entries_by_name={
+            "person": [
+                RosterEntry("Person", "15/04/26", "OPS", ops_shift="C1"),
+                RosterEntry("Person", "15/04/26", "Ward", ward_location="7A"),
+            ],
+        },
+        available_assessors_by_date_location={
+            "15/04/26": {
+                "OPS": ["OPS Assessor"],
+                "Ward": ["Ward Assessor"],
+            }
+        },
+    )
+    records = allocate_assessments(
+        [
+            make_need("Person", "Rx Check", "G2"),
+            make_need("Person", "MiniCeX", "J2"),
+        ],
+        roster,
+    )
+    assert [record.assigned_assessor for record in records] == ["OPS Assessor", "Ward Assessor"]
+
+
 def test_existing_assessor_avoidance_applies_to_rx_check_and_dispensing() -> None:
     roster = roster_for(
         [RosterEntry("Person", "15/04/26", "OPS")],

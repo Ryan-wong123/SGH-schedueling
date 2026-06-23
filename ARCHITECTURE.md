@@ -521,8 +521,8 @@ For each assessment need from the GLF workbook:
    - Total assessments < 4
    - MiniCeX assessments < 2 if MiniCeX
 10. For Rx Check, Dispensing, Med Recon, and MiniCeX, avoid existing assessor history for that assessee from the GLF second worksheet.
-    New allocations made in the current generation are controlled by capacity rules and may reuse the same assessor for the same assessee.
-11. Use round-robin tie-breaking.
+    New allocations made in the current generation are controlled by capacity rules. Prefer reusing a same-day assessor already selected for the same assessee when that assessor remains eligible.
+11. Use round-robin tie-breaking after same-day same-assessee reuse preference.
 12. Create allocation record.
 13. If no assessor is available, create unallocated record with reason.
 
