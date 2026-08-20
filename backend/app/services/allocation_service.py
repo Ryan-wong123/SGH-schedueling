@@ -15,7 +15,7 @@ from app.models.allocation import (
     RosterEntry,
 )
 from app.services.roster_parser import find_roster_entries
-from app.utils.names import normalize_name
+from app.utils.names import names_prefix_match, normalize_name
 
 
 ASSESSMENT_LOCATIONS: Dict[AssessmentType, Set[LocationType]] = {
@@ -62,6 +62,20 @@ def _can_accept(load: AssessorLoad, assessment_type: AssessmentType) -> bool:
     if assessment_type == "MiniCeX" and load.minicex >= 2:
         return False
     return True
+
+
+def _is_same_person(first_name: str, second_name: str) -> bool:
+    first = normalize_name(first_name)
+    second = normalize_name(second_name)
+    return bool(
+        first
+        and second
+        and (first == second or names_prefix_match(first_name, second_name) or names_prefix_match(second_name, first_name))
+    )
+
+
+def _is_glf_assessee(candidate_name: str, glf_assessee_names: Tuple[str, ...]) -> bool:
+    return any(_is_same_person(candidate_name, assessee_name) for assessee_name in glf_assessee_names)
 
 
 def _select_assessor(
@@ -112,14 +126,9 @@ def _prefer_same_day_assessee_assessor(
 
 
 def _available_assessors_for_entry(roster: RosterData, entry: RosterEntry) -> List[str]:
-    if entry.location == "Ward" and entry.source_cell in roster.ward_assessors_by_source_cell:
-        return roster.ward_assessors_by_source_cell[entry.source_cell]
     by_location = roster.available_assessors_by_date_location.get(entry.date, {})
     if by_location:
         return by_location.get(entry.location, [])
-    assessors = by_location.get(entry.location)
-    if assessors is not None:
-        return assessors
     return roster.available_assessors_by_date.get(entry.date, [])
 
 
@@ -175,6 +184,7 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
     last_used: Dict[Tuple[str, str], int] = {}
     current_run_assignees: DefaultDict[Tuple[str, str], List[str]] = defaultdict(list)
     usage_counter = 0
+    glf_assessee_names = tuple(sorted({need.assessee_name for need in needs if normalize_name(need.assessee_name)}, key=normalize_name))
 
     for need in needs:
         if not need.needs_allocation:
@@ -212,7 +222,9 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
             candidates = [
                 name
                 for name in available
-                if _can_accept(loads[entry.date][normalize_name(name)], need.assessment_type)
+                if not _is_same_person(name, need.assessee_name)
+                and not _is_glf_assessee(name, glf_assessee_names)
+                and _can_accept(loads[entry.date][normalize_name(name)], need.assessment_type)
             ]
             if not candidates:
                 capacity_blocked = True

@@ -177,6 +177,48 @@ def test_ward_allocation_uses_ward_assessors_for_same_date() -> None:
     assert records[0].assessee_location == "Ward (42A (1-8) RS-2)"
 
 
+def test_ward_allocation_uses_another_same_day_ward_assessor_not_the_assessee() -> None:
+    roster = RosterData(
+        available_assessors_by_date={"15/04/26": ["Amanda Chua", "Fiona Yeo"]},
+        assessee_entries_by_name={
+            "amanda chua": [RosterEntry("Amanda Chua", "15/04/26", "Ward", source_cell="B3", ward_location="42A")],
+        },
+        available_assessors_by_date_location={
+            "15/04/26": {"Ward": ["Amanda Chua", "Fiona Yeo"]},
+        },
+        ward_assessors_by_source_cell={"B3": ["Amanda Chua"]},
+    )
+
+    record = allocate_assessments([make_need("Amanda Chua Jing Yi", "MiniCeX")], roster)[0]
+
+    assert record.status == "Allocated"
+    assert record.assigned_assessor == "Fiona Yeo"
+
+
+def test_glf_assessees_are_never_selected_as_assessors_for_other_people() -> None:
+    roster = RosterData(
+        available_assessors_by_date={"15/04/26": ["Amanda Chua", "Fiona Yeo"]},
+        assessee_entries_by_name={
+            "target": [RosterEntry("Target", "15/04/26", "Ward", ward_location="42A")],
+        },
+        available_assessors_by_date_location={
+            "15/04/26": {"Ward": ["Amanda Chua", "Fiona Yeo"]},
+        },
+    )
+    glf_assessee = GlfAssessmentNeed(
+        assessee_name="Amanda Chua Jing Yi",
+        assessment_type="Rx Check",
+        original_glf_cell_reference="G3",
+        needs_allocation=False,
+        status="Skipped - Already Allocated",
+    )
+
+    record = allocate_assessments([make_need("Target", "MiniCeX"), glf_assessee], roster)[0]
+
+    assert record.status == "Allocated"
+    assert record.assigned_assessor == "Fiona Yeo"
+
+
 def test_ops_allocation_does_not_use_ward_assessors() -> None:
     roster = RosterData(
         available_assessors_by_date={"15/04/26": ["Ward Assessor"]},

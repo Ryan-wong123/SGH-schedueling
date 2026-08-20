@@ -29,19 +29,24 @@ def build_roster_workbook() -> Workbook:
     ward["A3"] = "42A (1-8)\nRS-2"
     ward["C3"] = "Amanda Chua"
     ward["C3"].fill = PatternFill(fill_type="solid", fgColor="FFFBE2D5")
+    ward["C4"] = "Amanda Chua"
+    ward["C4"].fill = PatternFill(fill_type="solid", fgColor="FFFFFFFF")
+    ward["A4"] = "45A"
     return wb
 
 
-def test_roster_parser_uses_second_sheet_white_cells_for_ward_assessors_and_assessees() -> None:
+def test_roster_parser_uses_unbraced_white_ward_cells_for_assessors_and_glf_assessee_locations() -> None:
     roster = parse_roster(build_roster_workbook())
     assert roster.available_assessors_by_date == {
         "15/04/26": ["Genevieve Subur"],
         "16/04/26": ["Khoo Sher Ri"],
+        "17/04/26": ["Amanda Chua"],
     }
-    assert roster.all_assessors == ["Genevieve Subur", "Khoo Sher Ri"]
+    assert roster.all_assessors == ["Amanda Chua", "Genevieve Subur", "Khoo Sher Ri"]
     assert roster.assessor_availability_type_by_date == {
         "15/04/26": {"genevieve subur": "Full day GLF"},
         "16/04/26": {"khoo sher ri": "Half day GLF"},
+        "17/04/26": {"amanda chua": "Full day GLF"},
     }
     assert roster.available_assessors_by_date_location == {
         "15/04/26": {
@@ -50,13 +55,19 @@ def test_roster_parser_uses_second_sheet_white_cells_for_ward_assessors_and_asse
         "16/04/26": {
             "OPS": ["Khoo Sher Ri"],
         },
+        "17/04/26": {
+            "Ward": ["Amanda Chua"],
+        },
     }
     assert roster.ward_assessors_by_source_cell["B3"] == []
     entries = find_roster_entries(roster, "Amanda Chua Jing Yi")
     assert sorted((entry.date, entry.location) for entry in entries) == [
         ("16/04/26", "OPS"),
+        ("17/04/26", "Ward"),
     ]
-    assert entries[0].ops_shift == "Clinic-1"
+    assert next(entry for entry in entries if entry.location == "OPS").ops_shift == "Clinic-1"
+    ward_entry = next(entry for entry in entries if entry.location == "Ward")
+    assert ward_entry.ward_location == "45A"
 
 
 def test_braced_ward_cell_is_fully_ignored_for_automatic_allocation() -> None:
