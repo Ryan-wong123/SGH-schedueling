@@ -112,7 +112,7 @@ For Ward allocation, the system must use the second worksheet:
 
 - Only white-filled cells are used.
 - White Ward cells containing `{...}` are occupied/manual Ward allocation cells and must be ignored entirely for automatic allocation. Names inside and outside `{...}` in that cell must not be treated as assessees or assessors.
-- White Ward cells without `{...}` identify Ward assessors available on that date.
+- White Ward cells without `{...}` identify Ward availability and create a Ward date/location entry for the same name. Only people listed in column A of the second GLF workbook worksheet are assessment candidates; a roster name matching any of those GLF assessees is never eligible as an assessor. The Ward sheet supplies their date/location only.
 - The ward location label is taken from the same row's first column and should be preserved for preview output.
 - OPS shift labels are taken from green OPS cells in the first worksheet and should be preserved for preview output.
 - `floater` / `*floater*` text is a roster placeholder and must not be treated as an assessor or assessee.
@@ -158,7 +158,9 @@ The system must pair assessors with GLF availability to assessees based on:
 2. Correct assessee location
 3. Assessment type compatibility
 4. Assessor daily capacity
-5. Round-robin balancing
+5. Assessor is not any person listed in column A of the GLF progress worksheet
+6. Assessor and assessee must be different people
+7. Round-robin balancing
 
 ---
 
@@ -384,9 +386,10 @@ For each assessment date:
 2. Filter assessors by GLF availability.
 3. Filter assessors by location compatibility.
 4. Filter assessors by daily capacity.
-5. Always assign the eligible assessor with the lowest number of assignments for that date.
-6. If tied, assign the assessor who was least recently used.
-7. If still tied, sort by assessor name alphabetically.
+5. Exclude every person listed in column A of the GLF progress worksheet from the assessor candidate list, including shortened roster-name variants.
+6. Always assign the eligible assessor with the lowest number of assignments for that date.
+7. If tied, assign the assessor who was least recently used.
+8. If still tied, sort by assessor name alphabetically.
 
 ### 7.1 Capacity Check During Round-Robin
 
@@ -452,7 +455,7 @@ Implement the allocation logic using the following high-level algorithm.
 2. Open the second worksheet of the roster workbook for Ward allocation.
 3. Detect non-ward assessors with yellow GLF availability in worksheet 1.
 4. Detect OPS assessee date and location from green cells in worksheet 1.
-5. Detect Ward assessors from white worksheet 2 cells without `{...}`.
+5. Detect Ward assessors from white worksheet 2 cells without `{...}` and create Ward date/location entries for the same names.
 6. Ignore white worksheet 2 cells containing `{...}` entirely for automatic allocation, including names inside and outside the braces.
 7. Capture the ward location label from column A on each Ward allocation row.
 8. Ignore non-white cells in worksheet 2 for Ward allocation.
@@ -1064,7 +1067,7 @@ Create automated tests for the core logic.
 At minimum, test:
 
 1. GLF workbook password handling.
-2. Roster workbook uses the first worksheet for OPS/non-ward availability and the second worksheet white cells for Ward assessors and assessees.
+2. Roster workbook uses the first worksheet for OPS/non-ward availability and unbraced white cells in the second worksheet for Ward assessor availability and same-name Ward date/location entries.
 3. White Ward cells containing `{...}` are fully ignored and do not create automatic assessee entries or assessor availability.
 4. GLF workbook uses the second worksheet as progress source.
 5. Black-filled GLF cells are skipped.
@@ -1079,21 +1082,23 @@ At minimum, test:
 14. Med Recon only matches Ward.
 15. Rx Check matches Ward or OPS.
 16. Round-robin chooses the least-assigned eligible assessor.
-17. New worksheet is inserted after the first worksheet.
-18. Existing second worksheet is preserved and shifted.
-19. Existing worksheets, formulas, formatting, and colours are preserved as much as possible.
-20. Generated worksheet name increments if `Generated Allocation` already exists.
-21. Theme-black GLF cells are treated as black-filled passed cells.
-22. Generated worksheet clears copied text from black-filled passed cells.
-23. Generated worksheet highlights newly allocated cells in blue.
-24. Preview records include the GLF section header beside the assessee.
-25. Preview records show Ward locations with the ward label in brackets when available.
-26. Preview records show OPS locations with the OPS shift label in brackets when available.
-27. Output workbook can be downloaded.
-28. Separate new-allocation workbook can be downloaded.
-29. Separate new-allocation workbook matches the website preview output columns.
-30. Frontend allocated preview records can be filtered by selected start and end dates.
-31. Frontend shows rostered/available assessors who were not assigned any assessee in the selected date range.
+17. An assessee is never assigned to assess themself, including where the roster uses a shortened form of the same name.
+18. A person listed in column A of the GLF progress worksheet is never selected as an assessor for another person.
+19. New worksheet is inserted after the first worksheet.
+20. Existing second worksheet is preserved and shifted.
+21. Existing worksheets, formulas, formatting, data, and colours are preserved as much as possible.
+22. Generated worksheet name increments if `Generated Allocation` already exists.
+23. Theme-black GLF cells are treated as black-filled passed cells.
+24. Generated worksheet clears copied text from black-filled passed cells.
+25. Generated worksheet highlights newly allocated cells in blue.
+26. Preview records include the GLF section header beside the assessee.
+27. Preview records show Ward locations with the ward label in brackets when available.
+28. Preview records show OPS locations with the OPS shift label in brackets when available.
+29. Output workbook can be downloaded.
+30. Separate new-allocation workbook can be downloaded.
+31. Separate new-allocation workbook matches the website preview output columns.
+32. Frontend allocated preview records can be filtered by selected start and end dates.
+33. Frontend shows rostered/available assessors who were not assigned any assessee in the selected date range.
 
 ---
 
@@ -1125,7 +1130,7 @@ The project is complete when:
 2. User can enter the GLF workbook password.
 3. Backend can read the password-protected GLF workbook.
 4. Backend reads the first roster worksheet for OPS entries and non-ward GLF availability.
-5. Backend reads the second roster worksheet white cells for Ward assessors and assessees, while fully ignoring brace-containing Ward cells for automatic allocation.
+5. Backend reads unbraced white cells in the second roster worksheet as Ward assessor availability and same-name Ward date/location entries, while fully ignoring brace-containing Ward cells for automatic allocation. Assessment candidates remain the names in column A of the GLF progress worksheet.
 6. Backend reads the second worksheet of the GLF workbook for current progress.
 7. The system identifies blank assessment cells requiring allocation.
 8. The system skips black-filled cells.

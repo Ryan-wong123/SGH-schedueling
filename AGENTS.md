@@ -34,14 +34,12 @@ Codex should use these project markdown files as the source of truth:
 
 - `PRD.md` — product requirements and business rules
 - `ARCHITECTURE.md` — technical design and system structure
-- `TASKS.md` — implementation checklist and task breakdown
 - `AGENTS.md` — coding-agent instructions and project conventions
 
 When requirements conflict, follow this priority order:
 
 1. `PRD.md`
 2. `ARCHITECTURE.md`
-3. `TASKS.md`
 4. `AGENTS.md`
 
 ---
@@ -69,15 +67,17 @@ The system must:
     - Maximum 4 total assessments per assessor per day
     - Maximum 2 MiniCeX assessments per assessor per day
 13. Use round-robin allocation among eligible assessors.
-14. Avoid assigning the same assessor already used for the same assessee in the GLF second worksheet for Rx Check, Dispensing, Med Recon, and MiniCeX, where possible.
+14. Never select a person listed in column A of the GLF progress worksheet as an assessor, including shortened roster-name variants.
+15. Never assign an assessee to themself, including shortened roster-name variants.
+16. Avoid assigning the same assessor already used for the same assessee in the GLF second worksheet for Rx Check, Dispensing, Med Recon, and MiniCeX, where possible.
     New allocations created during the current generation may reuse the same assessor for the same assessee when that assessor still has capacity under the daily limits.
-15. Show Ward locations in the website preview as `Ward (<ward location>)` when the Ward location label is available.
-16. Generate a new worksheet named `Generated Allocation`.
-17. Insert the generated worksheet immediately after the first worksheet.
-18. Preserve all existing worksheets, formulas, formatting, data, and colours as much as possible.
-19. Do not overwrite the original second worksheet.
-20. Return the full updated GLF workbook for download.
-21. Return a separate new-allocation workbook for download, matching the website preview output.
+17. Show Ward locations in the website preview as `Ward (<ward location>)` when the Ward location label is available.
+18. Generate a new worksheet named `Generated Allocation`.
+19. Insert the generated worksheet immediately after the first worksheet.
+20. Preserve all existing worksheets, formulas, formatting, data, and colours as much as possible.
+21. Do not overwrite the original second worksheet.
+22. Return the full updated GLF workbook for download.
+23. Return a separate new-allocation workbook for download, matching the website preview output.
 
 ---
 
@@ -158,7 +158,7 @@ The system must inspect cell fill colours, not only cell values.
 - Use the second worksheet for Ward allocation.
 - In the second worksheet, use only white cells for Ward date/location data.
 - White Ward cells containing `{...}` are occupied/manual Ward allocation cells and must be ignored entirely for automatic allocation. Names inside and outside `{...}` in that cell must not be treated as assessees or assessors.
-- White Ward cells without `{...}` identify Ward assessors available on that date.
+- White Ward cells without `{...}` identify Ward availability and create Ward date/location entries for the same names. Assessment candidates remain the people in column A of the second GLF workbook worksheet, and those names must not be selected as assessors.
 - The Ward location label comes from column A on the same row as the white Ward cell.
 - Ignore `floater` / `*floater*` roster placeholders.
 - Ignore non-white cells in the second worksheet for Ward allocation.

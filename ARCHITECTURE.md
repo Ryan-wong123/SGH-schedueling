@@ -274,7 +274,7 @@ Responsibilities:
   - Green = OPS
   - White cells in worksheet 2 = Ward
   - Non-white cells in worksheet 2 = ignored for Ward allocation
-- Treat white Ward cells containing `{...}` as occupied/manual Ward cells that are fully ignored for automatic allocation. Names inside and outside braces in those cells do not create assessee entries or assessor availability. White Ward cells without `{...}` provide Ward assessor availability.
+- Treat white Ward cells containing `{...}` as occupied/manual Ward cells that are fully ignored for automatic allocation. Names inside and outside braces in those cells do not create assessee entries or assessor availability. Each name in a white Ward cell without `{...}` provides Ward availability and a same-name Ward date/location entry. Assessment candidates are restricted to column A of the GLF progress worksheet and are excluded from assessor candidates.
 - Preserve the ward location label from column A for Ward preview output.
 - Preserve the OPS shift label from green OPS cells in the first worksheet for OPS preview output.
 - Collect all detected assessors with GLF or Ward availability and preserve availability grouped by date for frontend reporting.
@@ -307,6 +307,8 @@ Responsibilities:
 - Enforce assessor capacity rules.
 - Run round-robin assessor selection.
 - Avoid assessors already used for the same assessee in the GLF second worksheet for all allocatable assessment types, where possible.
+- Exclude every person listed in column A of the GLF progress worksheet from assessor candidates, including shortened roster-name variants.
+- Never assign an assessee to themself, including shortened roster-name variants.
 - Allow new allocations created during the current generation to reuse the same assessor for the same assessee when capacity permits.
 - Produce allocation records, including GLF section headers and display-ready locations such as `Ward (42A (1-8) RS-2)`.
 
@@ -516,15 +518,16 @@ For each assessment need from the GLF workbook:
    - Med Recon = Ward only
    - MiniCeX = Ward only
 7. Find available assessors with GLF availability on same date. For Ward allocation, ignore brace-containing Ward cells entirely before matching assessees or assessors.
-8. Filter assessors by location compatibility.
-9. Filter assessors by capacity:
+8. Exclude every person listed in column A of the GLF progress worksheet from assessor candidates, including shortened roster-name variants.
+9. Filter assessors by location compatibility.
+10. Filter assessors by capacity:
    - Total assessments < 4
    - MiniCeX assessments < 2 if MiniCeX
-10. For Rx Check, Dispensing, Med Recon, and MiniCeX, avoid existing assessor history for that assessee from the GLF second worksheet.
+11. For Rx Check, Dispensing, Med Recon, and MiniCeX, avoid existing assessor history for that assessee from the GLF second worksheet.
     New allocations made in the current generation are controlled by capacity rules. Prefer reusing a same-day assessor already selected for the same assessee when that assessor remains eligible.
-11. Use round-robin tie-breaking after same-day same-assessee reuse preference.
-12. Create allocation record.
-13. If no assessor is available, create unallocated record with reason.
+12. Use round-robin tie-breaking after same-day same-assessee reuse preference.
+13. Create allocation record.
+14. If no assessor is available, create unallocated record with reason.
 
 ---
 

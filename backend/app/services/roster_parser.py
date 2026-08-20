@@ -178,6 +178,17 @@ def _parse_ward_roster_sheet(
             ward_assessors_by_source_cell[cell.coordinate] = assessors
             for assessor in assessors:
                 _add_available(available, available_by_location, availability_type_by_date, date_text, "Ward", assessor)
+                _add_entry(
+                    entries,
+                    assessor,
+                    RosterEntry(
+                        assessee_name=assessor,
+                        date=date_text,
+                        location="Ward",
+                        source_cell=cell.coordinate,
+                        ward_location=ward_location,
+                    ),
+                )
             for name in assessees:
                 _add_entry(
                     entries,
