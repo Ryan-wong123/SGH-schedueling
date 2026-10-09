@@ -44,6 +44,6 @@ def load_glf_workbook_from_bytes(data: bytes, password: str):
 
 def load_roster_workbook_from_bytes(data: bytes):
     workbook = _load_workbook(BytesIO(data))
-    if len(workbook.worksheets) < 2:
-        raise AppError("The roster workbook must contain at least two worksheets.")
+    if not workbook.worksheets:
+        raise AppError("The roster workbook must contain at least one worksheet.")
     return workbook
