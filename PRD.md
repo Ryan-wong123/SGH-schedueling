@@ -88,15 +88,9 @@ The website should have a simple workflow:
 
 ### 4.1 Workbook Rule
 
-The Roster Ward Allocation Workbook contains 2 worksheets.
+Use the first worksheet of the Roster Ward Allocation Workbook for everything: OPS entries, non-ward GLF availability, and Ward allocation. Other worksheets in the roster workbook are not read.
 
-Use the first worksheet for OPS entries and non-ward GLF availability.
-
-Use the second worksheet for Ward allocation.
-
-The first worksheet contains OPS schedule information and non-ward GLF assessor availability.
-
-The second worksheet contains Ward allocation information and must be used for Ward assessees and Ward assessors.
+Each row of the first worksheet is a person (name in column A), and each date column holds that person's location for the day.
 
 ### 4.2 GLF Availability Rule
 
@@ -108,15 +102,15 @@ In the first worksheet of the roster workbook:
 
 The system must identify assessors with GLF availability by reading the cell fill colour.
 
-For Ward allocation, the system must use the second worksheet:
+For Ward allocation, the system must use the white cells of the first worksheet:
 
 - Only white-filled cells are used.
-- White Ward cells containing `{...}` are occupied/manual Ward allocation cells and must be ignored entirely for automatic allocation. Names inside and outside `{...}` in that cell must not be treated as assessees or assessors.
-- White Ward cells without `{...}` identify Ward availability and create a Ward date/location entry for the same name. Only people listed in column A of the second GLF workbook worksheet are assessment candidates; a roster name matching any of those GLF assessees is never eligible as an assessor. The Ward sheet supplies their date/location only.
-- The ward location label is taken from the same row's first column and should be preserved for preview output.
+- Braces `{...}` are ignored: the `{` and `}` characters are removed and the text inside is classified as ward or non-ward like any other value (e.g. `{45A}` is used as `Ward ({45A})`, `67A / {CICU}` is used as `Ward (67A {CICU})`, `{CICU}` alone is excluded). The braces are removed only for this check; the Ward label keeps them.
+- White cells must contain a ward value to be used. A ward value is a two-digit ward number, usually followed by a letter, suffix or bracketed bed range (e.g. `11B`, `45A`, `58 ISO`, `63(12-14)`, `68ICU`), found anywhere in the cell text regardless of separators. Cells with only non-ward values (e.g. `Admin`, `MICU`, `CTS`, `DI`, `IPAS/IDD`, `SGH@Home Command Centre`, `WR - IM`, `Clinic-1`, `NICU-1 / NICU-2 / CCU`) are ignored. Cells mixing ward and non-ward values (e.g. `45A / MICA`) are used.
+- A used white cell creates a Ward availability and a Ward date/location entry for the person in column A of that row. Only people listed in column A of the second GLF workbook worksheet are assessment candidates; a roster name matching any of those GLF assessees is never eligible as an assessor.
+- The ward location label is the white cell's own text and should be preserved for preview output.
 - OPS shift labels are taken from green OPS cells in the first worksheet and should be preserved for preview output.
 - `floater` / `*floater*` text is a roster placeholder and must not be treated as an assessor or assessee.
-- Non-white cells in the second worksheet must be ignored for Ward allocation.
 
 ### 4.3 Location Colour Rule
 
@@ -129,8 +123,8 @@ Use the following location rules:
 | Colour / Cell Type | Meaning |
 |---|---|
 | Green cells in worksheet 1 | OPS |
-| White cells in worksheet 2 | Ward |
-| Non-white cells in worksheet 2 | Ignore for Ward allocation |
+| White cells in worksheet 1 with a ward value | Ward |
+| Other cells in worksheet 1 | Ignore for Ward allocation |
 
 ### 4.4 Assessment Location Compatibility
 
@@ -452,16 +446,16 @@ Implement the allocation logic using the following high-level algorithm.
 ### Step 3: Parse Roster
 
 1. Open the first worksheet of the roster workbook for OPS entries and non-ward GLF availability.
-2. Open the second worksheet of the roster workbook for Ward allocation.
+2. Use the same first worksheet of the roster workbook for Ward allocation.
 3. Detect non-ward assessors with yellow GLF availability in worksheet 1.
 4. Detect OPS assessee date and location from green cells in worksheet 1.
-5. Detect Ward assessors from white worksheet 2 cells without `{...}` and create Ward date/location entries for the same names.
-6. Ignore white worksheet 2 cells containing `{...}` entirely for automatic allocation, including names inside and outside the braces.
-7. Capture the ward location label from column A on each Ward allocation row.
-8. Ignore non-white cells in worksheet 2 for Ward allocation.
+5. Detect Ward assessors from white worksheet 1 cells that contain a ward value (after removing `{` and `}`), and create Ward date/location entries for the person in column A of that row.
+6. Remove `{` and `}` characters and classify the inner text normally; keep the braces in the Ward label.
+7. Capture the ward location label from the white Ward cell's own text.
+8. Ignore white worksheet 1 cells with no ward value, and non-white cells, for Ward allocation.
 9. Classify locations:
    - Green cells in worksheet 1 = OPS
-   - White cells in worksheet 2 = Ward
+   - White cells in worksheet 1 with a ward value = Ward
 
 ### Step 4: Match Assessees
 
@@ -935,8 +929,8 @@ In the Roster Ward Allocation Workbook:
 |---|---|
 | Yellow in GLF cell on worksheet 1 | Assessor available for non-ward allocation |
 | Green on worksheet 1 | OPS location |
-| White on worksheet 2 | Ward location for assessors and assessees |
-| Non-white on worksheet 2 | Ignore for Ward allocation |
+| White on worksheet 1 with a ward value | Ward location for assessors and assessees |
+| Other cells on worksheet 1 | Ignore for Ward allocation |
 
 Because Excel colours may appear as RGB, indexed colours, or theme colours, implement colour detection in a tolerant way.
 
@@ -1043,7 +1037,7 @@ The GLF workbook must contain at least two worksheets.
 ```
 
 ```text
-The roster workbook must contain at least two worksheets.
+The roster workbook must contain at least one worksheet.
 ```
 
 ```text
@@ -1067,8 +1061,8 @@ Create automated tests for the core logic.
 At minimum, test:
 
 1. GLF workbook password handling.
-2. Roster workbook uses the first worksheet for OPS/non-ward availability and unbraced white cells in the second worksheet for Ward assessor availability and same-name Ward date/location entries.
-3. White Ward cells containing `{...}` are fully ignored and do not create automatic assessee entries or assessor availability.
+2. Roster workbook uses the first worksheet for OPS/non-ward availability and for Ward allocation from white cells that contain a ward value (braces removed before checking).
+3. White Ward cells with no ward value (braces removed before checking) are fully ignored and do not create automatic assessee entries or assessor availability.
 4. GLF workbook uses the second worksheet as progress source.
 5. Black-filled GLF cells are skipped.
 6. Blank GLF assessment cells are considered for allocation.
@@ -1130,7 +1124,7 @@ The project is complete when:
 2. User can enter the GLF workbook password.
 3. Backend can read the password-protected GLF workbook.
 4. Backend reads the first roster worksheet for OPS entries and non-ward GLF availability.
-5. Backend reads unbraced white cells in the second roster worksheet as Ward assessor availability and same-name Ward date/location entries, while fully ignoring brace-containing Ward cells for automatic allocation. Assessment candidates remain the names in column A of the GLF progress worksheet.
+5. Backend reads white cells with a ward value (braces removed before checking) in the first roster worksheet as Ward availability and Ward date/location entries for the row's column A person, while fully ignoring non-ward-only white cells for automatic allocation. Assessment candidates remain the names in column A of the GLF progress worksheet.
 6. Backend reads the second worksheet of the GLF workbook for current progress.
 7. The system identifies blank assessment cells requiring allocation.
 8. The system skips black-filled cells.

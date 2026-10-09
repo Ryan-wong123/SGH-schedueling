@@ -264,18 +264,17 @@ Each item should represent one assessee-assessment pair that is either allocatab
 
 Responsibilities:
 
-- Read the first worksheet of the Roster Ward Allocation Workbook for OPS entries and non-ward GLF availability.
-- Read the second worksheet of the Roster Ward Allocation Workbook for Ward allocation.
+- Read only the first worksheet of the Roster Ward Allocation Workbook, for OPS entries, non-ward GLF availability, and Ward allocation.
 - Detect assessors with GLF availability.
 - Classify yellow `GLF` cells as `Full day GLF` and yellow `/GLF` cells as `Half day GLF`.
 - Detect assessee schedule date and location.
 - Classify roster cell colours:
   - Yellow = GLF available assessor
   - Green = OPS
-  - White cells in worksheet 2 = Ward
-  - Non-white cells in worksheet 2 = ignored for Ward allocation
-- Treat white Ward cells containing `{...}` as occupied/manual Ward cells that are fully ignored for automatic allocation. Names inside and outside braces in those cells do not create assessee entries or assessor availability. Each name in a white Ward cell without `{...}` provides Ward availability and a same-name Ward date/location entry. Assessment candidates are restricted to column A of the GLF progress worksheet and are excluded from assessor candidates.
-- Preserve the ward location label from column A for Ward preview output.
+  - White cells in worksheet 1 with a ward value = Ward
+  - Other cells = ignored for Ward allocation
+- Ignore white cells with no ward value (a two-digit ward number such as `45A`, `58 ISO`, `63(12-14)` or `68ICU`, matched anywhere in the cell text). Remove `{` and `}` characters first; the text inside is classified as ward or non-ward like any other value, and the Ward label keeps the braces. Each remaining white cell gives the person in column A of that row Ward availability and a Ward date/location entry. Assessment candidates are restricted to column A of the GLF progress worksheet and are excluded from assessor candidates.
+- Preserve the white Ward cell's own text as the ward location label for Ward preview output.
 - Preserve the OPS shift label from green OPS cells in the first worksheet for OPS preview output.
 - Collect all detected assessors with GLF or Ward availability and preserve availability grouped by date for frontend reporting.
 - Return structured roster data.
@@ -517,7 +516,7 @@ For each assessment need from the GLF workbook:
    - Dispensing = OPS only
    - Med Recon = Ward only
    - MiniCeX = Ward only
-7. Find available assessors with GLF availability on same date. For Ward allocation, ignore brace-containing Ward cells entirely before matching assessees or assessors.
+7. Find available assessors with GLF availability on same date. For Ward allocation, use only white cells with a ward number (braces removed before checking).
 8. Exclude every person listed in column A of the GLF progress worksheet from assessor candidates, including shortened roster-name variants.
 9. Filter assessors by location compatibility.
 10. Filter assessors by capacity:
@@ -563,7 +562,7 @@ The website preview table should show a display-oriented subset of the allocatio
 | Reason | Reason or Existing Allocation History |
 | Cell | Original GLF Cell Reference |
 
-For Ward allocations, `Assessee Location` should include the ward label in brackets when it is available from the roster second worksheet row heading, for example `Ward (42A (1-8) RS-2)`.
+For Ward allocations, `Assessee Location` should include the ward label in brackets taken from the white Ward cell text in the roster first worksheet, for example `Ward (45A MICA)`.
 
 For OPS allocations, `Assessee Location` should include the OPS shift label in brackets when it is available from the green OPS roster cell, for example `OPS (A)`, `OPS (C)`, `OPS (D)`, `OPS (ICT)`, or `OPS (C1)`. If no shift label is available, display `OPS`.
 
@@ -604,7 +603,8 @@ Test the logic in layers:
 2. Parser tests
    - GLF workbook parser
    - Roster workbook parser
-   - Brace-containing Ward cells do not create automatic assessee entries or assessor availability
+   - Braces are removed and the inner text is classified as ward or non-ward normally
+   - White cells with no ward value are excluded; mixed ward/non-ward cells are used
 3. Allocation tests
    - Capacity limits
    - Location compatibility
