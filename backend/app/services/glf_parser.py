@@ -67,6 +67,8 @@ def _extract_existing_assessors(text: object) -> Tuple[str, ...]:
 
 
 def parse_glf_progress(workbook) -> List[GlfAssessmentNeed]:
+    if len(workbook.worksheets) < 2:
+        raise AppError("The GLF workbook must contain at least two worksheets.")
     ws = workbook.worksheets[1]
     header_row, assessment_columns = _find_assessment_columns(ws)
     needs: List[GlfAssessmentNeed] = []
@@ -80,10 +82,6 @@ def parse_glf_progress(workbook) -> List[GlfAssessmentNeed]:
         if _is_section_header(assessee_name):
             if assessee_name:
                 current_section_header = assessee_name
-            continue
-
-        row_has_context = any(ws.cell(row_index, col).value not in (None, "") for col in range(2, 13))
-        if not row_has_context:
             continue
 
         existing_for_row: List[str] = []

@@ -103,3 +103,43 @@ def test_invalid_glf_workbook_raises_clear_error() -> None:
         assert exc.message in {WRONG_PASSWORD_MESSAGE, "Invalid Excel file."}
     else:
         raise AssertionError("Expected AppError")
+
+
+def test_name_only_assessee_rows_are_included():
+    wb = build_glf_workbook()
+    wb["Progress"].append(["Person Two"])
+    needs = parse_glf_progress(wb)
+    assert len([n for n in needs if n.assessee_name == "Person Two" and n.needs_allocation]) == 4
+
+
+def test_missing_progress_worksheet_is_a_validation_error():
+    import pytest
+    with pytest.raises(AppError, match="at least two worksheets"):
+        parse_glf_progress(Workbook())
+
+
+def test_empty_password_is_rejected():
+    import pytest
+    with pytest.raises(AppError, match="password is required"):
+        load_glf_workbook_from_bytes(workbook_bytes(build_glf_workbook()), " ")
+
+
+def test_encrypted_reader_uses_supplied_password_and_reports_wrong_password(monkeypatch):
+    import pytest
+    import app.services.excel_reader as reader
+
+    data = workbook_bytes(build_glf_workbook())
+    class EncryptedFile:
+        def __init__(self, source):
+            pass
+        def is_encrypted(self):
+            return True
+        def load_key(self, password):
+            if password != "test-only-password":
+                raise ValueError("Wrong password")
+        def decrypt(self, output):
+            output.write(data)
+    monkeypatch.setattr(reader.msoffcrypto, "OfficeFile", EncryptedFile)
+    assert reader.load_glf_workbook_from_bytes(b"encrypted", "test-only-password").sheetnames[1] == "Progress"
+    with pytest.raises(AppError, match="check the password"):
+        reader.load_glf_workbook_from_bytes(b"encrypted", "incorrect")
