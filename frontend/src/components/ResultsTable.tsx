@@ -17,6 +17,7 @@ export function ResultsTable({ records }: Props) {
             <th>Assessment</th>
             <th>Location</th>
             <th>Assessor</th>
+            <th>GLF Type</th>
             <th>Status</th>
             <th>Reason</th>
             <th>Cell</th>
@@ -31,6 +32,7 @@ export function ResultsTable({ records }: Props) {
               <td>{record.assessmentType}</td>
               <td>{record.assesseeLocation}</td>
               <td>{record.assignedAssessor}</td>
+              <td>{record.assessorGlfAvailabilityType}</td>
               <td>{record.status}</td>
               <td>{record.reason || record.existingAllocationHistory}</td>
               <td>{record.originalGlfCellReference}</td>

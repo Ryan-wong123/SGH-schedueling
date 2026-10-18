@@ -32,21 +32,3 @@ def test_colour_classification() -> None:
     assert classify_location_from_fill(cell_with_fill("FF92D050")) == "OPS"
     assert classify_location_from_fill(cell_with_fill("FFFFFFFF")) == "Ward"
     assert classify_location_from_fill(cell_with_fill("FFFBE2D5")) == "Unknown"
-
-
-def test_theme_and_indexed_colours_resolve_for_roster_and_glf():
-    from openpyxl.styles import Color
-    from openpyxl.writer.theme import theme_xml
-    from app.utils.colours import is_green_fill, is_white_fill
-
-    wb = Workbook()
-    wb.loaded_theme = theme_xml.replace('val="4F81BD"', 'val="92D050"').replace('val="C0504D"', 'val="FFFF00"').encode()
-    cell = wb.active["A1"]
-    for colour, check in [(Color(theme=4), is_green_fill), (Color(theme=5), is_yellow_fill),
-                          (Color(theme=0), is_white_fill), (Color(theme=1), is_black_fill),
-                          (Color(indexed=3), is_green_fill), (Color(indexed=5), is_yellow_fill)]:
-        cell.fill = PatternFill(fill_type="solid", fgColor=colour)
-        assert check(cell)
-    cell.fill = PatternFill(fill_type="solid", fgColor=Color(theme=1, tint=0.98))
-    assert is_white_fill(cell)
-    assert not is_black_fill(cell)

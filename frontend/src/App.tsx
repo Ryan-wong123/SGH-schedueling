@@ -130,7 +130,6 @@ export default function App() {
                 Download new allocation
               </a>
             </div>
-            <p>Unallocated: {result.summary.unallocated} · Skipped: {result.summary.skipped}</p>
             <div className="results-filter">
               <label>
                 <span>Start date</span>
@@ -175,10 +174,6 @@ export default function App() {
               )}
             </div>
             <ResultsTable records={filteredRecords} />
-            <details>
-              <summary>Unallocated and skipped records</summary>
-              <ResultsTable records={result.records.filter((record) => record.status !== "Allocated")} />
-            </details>
           </section>
         )}
       </section>

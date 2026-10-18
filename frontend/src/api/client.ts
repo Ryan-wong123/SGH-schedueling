@@ -5,13 +5,7 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 async function parseError(response: Response): Promise<string> {
   try {
     const body = await response.json();
-    if (typeof body.detail === "string") return body.detail;
-    if (Array.isArray(body.detail)) {
-      return body.detail.map((item: { loc?: string[]; msg?: string }) =>
-        `${item.loc?.slice(1).join(".") || "Input"}: ${item.msg || "Invalid value"}`
-      ).join("; ");
-    }
-    return "Request failed.";
+    return body.detail || "Request failed.";
   } catch {
     return "Request failed.";
   }

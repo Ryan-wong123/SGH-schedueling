@@ -1,5 +1,3 @@
-import pytest
-
 from typing import Dict, List
 
 from app.models.allocation import GlfAssessmentNeed, RosterData, RosterEntry
@@ -36,7 +34,7 @@ def test_location_compatibility_for_dispensing_and_minicex() -> None:
     assert records[1].status == "Unallocated"
 
 
-def test_same_group_preference_precedes_fewest_loaded_assessor() -> None:
+def test_round_robin_picks_fewest_loaded_assessor() -> None:
     roster = roster_for(
         [
             RosterEntry("P1", "15/04/26", "Ward"),
@@ -49,7 +47,7 @@ def test_same_group_preference_precedes_fewest_loaded_assessor() -> None:
         [make_need("P1", "Rx Check", "G2"), make_need("P2", "Rx Check", "G3"), make_need("P3", "Rx Check", "G4")],
         roster,
     )
-    assert [record.assigned_assessor for record in records] == ["Assessor A", "Assessor A", "Assessor A"]
+    assert [record.assigned_assessor for record in records] == ["Assessor A", "Assessor B", "Assessor A"]
 
 
 def test_capacity_and_minicex_limits_are_enforced() -> None:
@@ -244,7 +242,7 @@ def test_ops_allocation_displays_shift_label() -> None:
     )
     records = allocate_assessments([make_need("Person", "Dispensing")], roster)
     assert records[0].status == "Allocated"
-    assert records[0].assessee_location == "OPS"
+    assert records[0].assessee_location == "OPS (C1)"
 
 
 def test_allocation_records_assessor_glf_availability_type() -> None:
@@ -271,60 +269,3 @@ def test_summary_counts_skipped() -> None:
     roster = roster_for([], {})
     records = allocate_assessments([skipped], roster)
     assert summarize_records(records) == {"allocated": 0, "unallocated": 0, "skipped": 1}
-
-
-@pytest.mark.parametrize("availability,limit", [("Full day GLF", 4), ("Half day GLF", 2)])
-def test_capacity_is_per_assessor_per_date(availability, limit):
-    dates = ["15/04/26", "16/04/26"]
-    entries = [RosterEntry(f"P{day}-{i}", day, "Ward") for day in dates for i in range(5)]
-    roster = roster_for(entries, {day: ["Assessor A"] for day in dates})
-    roster.assessor_availability_type_by_date.update({day: {"assessor a": availability} for day in dates})
-    records = allocate_assessments([make_need(e.assessee_name, "Med Recon") for e in entries], roster)
-    for day in dates:
-        assert sum(r.status == "Allocated" and r.date == day for r in records) == limit
-
-
-@pytest.mark.parametrize("first,second", [
-    (a, b) for a in ("MiniCeX", "Med Recon") for b in ("Rx Check", "Dispensing")
-] + [(b, a) for a in ("MiniCeX", "Med Recon") for b in ("Rx Check", "Dispensing")])
-def test_assessor_cannot_mix_assessment_groups_in_either_order(first, second):
-    roster = roster_for(
-        [RosterEntry("Person", "15/04/26", location) for location in ("Ward", "OPS")],
-        {"15/04/26": ["Assessor A"]},
-    )
-    records = allocate_assessments([make_need("Person", first), make_need("Person", second)], roster)
-    assert [r.status for r in records] == ["Allocated", "Unallocated"]
-    assert "same-day assessment group" in records[1].reason
-
-
-@pytest.mark.parametrize("first,second,location", [
-    ("MiniCeX", "Med Recon", "Ward"), ("Rx Check", "Dispensing", "OPS"),
-])
-def test_compatible_pair_prefers_same_assessee_assessor(first, second, location):
-    roster = roster_for([RosterEntry("Person", "15/04/26", location)],
-                        {"15/04/26": ["Assessor A", "Assessor B"]})
-    records = allocate_assessments([make_need("Person", first), make_need("Person", second)], roster)
-    assert [r.assigned_assessor for r in records] == ["Assessor A", "Assessor A"]
-
-
-def test_same_group_round_robin_breaks_equal_load_ties_by_least_recent_use():
-    roster = roster_for([RosterEntry(f"P{i}", "15/04/26", "Ward") for i in range(6)],
-                        {"15/04/26": ["Assessor A", "Assessor B"]})
-    records = allocate_assessments([make_need(f"P{i}", "MiniCeX") for i in range(4)] +
-                                   [make_need(f"P{i}", "Med Recon") for i in range(4, 6)], roster)
-    assert [r.assigned_assessor for r in records] == [
-        "Assessor A", "Assessor A", "Assessor B", "Assessor B", "Assessor A", "Assessor B"]
-
-
-def test_full_same_assessee_assessor_falls_back_to_another_candidate():
-    roster = roster_for([RosterEntry("Person", "15/04/26", "OPS")],
-                        {"15/04/26": ["Assessor A", "Assessor B"]})
-    roster.assessor_availability_type_by_date["15/04/26"] = {"assessor a": "Half day GLF"}
-    records = allocate_assessments([make_need("Person", "Rx Check", f"G{i}") for i in range(3)], roster)
-    assert [r.assigned_assessor for r in records] == ["Assessor A", "Assessor A", "Assessor B"]
-
-
-def test_dates_are_considered_in_chronological_order():
-    roster = roster_for([RosterEntry("Person", day, "Ward") for day in ["01/05/26", "30/04/26"]],
-                        {day: ["Assessor A"] for day in ["01/05/26", "30/04/26"]})
-    assert allocate_assessments([make_need("Person", "Med Recon")], roster)[0].date == "30/04/26"

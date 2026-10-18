@@ -266,7 +266,7 @@ Responsibilities:
 
 - Read only the first worksheet of the Roster Ward Allocation Workbook, for OPS entries, non-ward GLF availability, and Ward allocation.
 - Detect assessors with GLF availability.
-- Classify yellow `GLF` cells as `Full day GLF` and yellow `/GLF` or `GLF/` cells as `Half day GLF`.
+- Classify yellow `GLF` cells as `Full day GLF` and yellow `/GLF` cells as `Half day GLF`.
 - Detect assessee schedule date and location.
 - Classify roster cell colours:
   - Yellow = GLF available assessor
@@ -331,8 +331,8 @@ Responsibilities:
 - Highlight successfully allocated copied assessment cells with a blue fill after writing assessor/date text.
 - Save the updated workbook for download.
 - Create a separate new-allocation workbook from allocated preview records.
-- Use the preview columns `Date`, `Assessee`, `Header`, `Assessment`, `Location`, `Assessor`, `Status`, `Reason`, and `Cell`.
-- Retain availability type as API metadata; omit it from the preview/export columns.
+- Use the preview columns `Date`, `Assessee`, `Header`, `Assessment`, `Location`, `Assessor`, `GLF Type`, `Status`, `Reason`, and `Cell`.
+- Populate `GLF Type` with `Full day GLF` or `Half day GLF`.
 
 ---
 
@@ -422,8 +422,8 @@ Responsibilities:
 - Display allocation preview rows.
 - Show the GLF section header beside the assessee.
 - Show Ward locations with the ward label in brackets when available.
-- Show OPS locations as `OPS`.
-- Keep display columns aligned with AGENTS.md and the allocation-only workbook.
+- Show OPS locations with the OPS shift label in brackets when available.
+- Show whether the assigned assessor was full-day or half-day GLF.
 - Show status and reasons.
 - Allow user to inspect unallocated records.
 - Support filtering allocated preview rows by selected start and end dates.
@@ -520,12 +520,11 @@ For each assessment need from the GLF workbook:
 8. Exclude every person listed in column A of the GLF progress worksheet from assessor candidates, including shortened roster-name variants.
 9. Filter assessors by location compatibility.
 10. Filter assessors by capacity:
-   - Total assessments < 2 for Half day GLF, otherwise < 4
-   - No assignments in the other same-day assessment group (MiniCeX/Med Recon versus Rx Check/Dispensing)
+   - Total assessments < 4
    - MiniCeX assessments < 2 if MiniCeX
 11. For Rx Check, Dispensing, Med Recon, and MiniCeX, avoid existing assessor history for that assessee from the GLF second worksheet.
     New allocations made in the current generation are controlled by capacity rules. Prefer reusing a same-day assessor already selected for the same assessee when that assessor remains eligible.
-12. Prefer same-day same-assessee reuse, then an assessor already assigned to the same assessment group. Break remaining ties by daily load, least recent use on that date, then normalised assessor name.
+12. Use round-robin tie-breaking after same-day same-assessee reuse preference.
 13. Create allocation record.
 14. If no assessor is available, create unallocated record with reason.
 
@@ -558,13 +557,14 @@ The website preview table should show a display-oriented subset of the allocatio
 | Assessment | Assessment Type |
 | Location | Assessee Location |
 | Assessor | Assigned Assessor |
+| GLF Type | Assessor GLF Availability Type |
 | Status | Status |
 | Reason | Reason or Existing Allocation History |
 | Cell | Original GLF Cell Reference |
 
 For Ward allocations, `Assessee Location` should include the ward label in brackets taken from the white Ward cell text in the roster first worksheet, for example `Ward (45A MICA)`.
 
-OPS locations display as `OPS`, following AGENTS.md; shift labels are retained internally only.
+For OPS allocations, `Assessee Location` should include the OPS shift label in brackets when it is available from the green OPS roster cell, for example `OPS (A)`, `OPS (C)`, `OPS (D)`, `OPS (ICT)`, or `OPS (C1)`. If no shift label is available, display `OPS`.
 
 The separate new-allocation workbook should contain the same display-oriented preview columns and only successfully allocated rows. It is a separate `.xlsx` artifact and does not replace the full updated GLF workbook.
 
@@ -623,15 +623,3 @@ Test the logic in layers:
 6. Frontend tests or manual verification
    - Date range filtering of allocated preview rows
    - Available-but-not-allocated assessor list for selected date range
-
-
-## Allocation rule implementation
-
-`AssessorLoad` stores total assignments, MiniCeX assignments, and the selected assessment group per assessor/date. `_can_accept` enforces the availability-specific daily limit, MiniCeX limit, and group separation. Selection filters eligibility before existing-history avoidance and grouping preferences. No allocation state survives a generation.
-
-The roster parser recognises Ward numbers anywhere in the cell, including concatenated text and bare two-digit numbers. It removes brace characters for classification and normalises Excel carriage-return escapes and whitespace for display, preserving braces in the displayed Ward label. Both half-day marker orientations are recognised. Only worksheet 1 is parsed, with the person taken from column A; a one-sheet roster is valid.
-
-
-### Requirements reconciliation
-
-AGENTS.md takes precedence over this document. Website and allocation-only export columns are exactly Date, Assessee, Header, Assessment, Location, Assessor, Status, Reason, Cell. Ward labels preserve the white cell text with whitespace normalised; OPS displays as `OPS`. The API returns all records without a 500-record truncation. The UI shows all summary counts and provides skipped/unallocated records with reasons separately from the allocated preview. Excel RGB, indexed and workbook theme fills (including tints) are resolved by shared colour helpers. Name-only assessee rows are included, section headers and legend rows excluded, and compatible roster dates are considered chronologically.
