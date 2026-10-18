@@ -15,6 +15,7 @@ from app.models.allocation import (
     RosterEntry,
 )
 from app.services.roster_parser import find_roster_entries
+from app.utils.dates import parse_date
 from app.utils.names import names_prefix_match, normalize_name
 
 
@@ -30,6 +31,7 @@ ASSESSMENT_LOCATIONS: Dict[AssessmentType, Set[LocationType]] = {
 class AssessorLoad:
     total: int = 0
     minicex: int = 0
+    assessment_group: str = ""
 
 
 def summarize_records(records: List[AllocationRecord]) -> Dict[str, int]:
@@ -56,8 +58,19 @@ def _existing_matches_assessor(existing: Tuple[str, ...], assessor_name: str) ->
     return False
 
 
-def _can_accept(load: AssessorLoad, assessment_type: AssessmentType) -> bool:
-    if load.total >= 4:
+def _assessment_group(assessment_type: AssessmentType) -> str:
+    return "clinical" if assessment_type in {"MiniCeX", "Med Recon"} else "prescription"
+
+
+def _can_accept(
+    load: AssessorLoad,
+    assessment_type: AssessmentType,
+    availability_type: GlfAvailabilityType = "",
+) -> bool:
+    daily_limit = 2 if availability_type == "Half day GLF" else 4
+    if load.assessment_group and load.assessment_group != _assessment_group(assessment_type):
+        return False
+    if load.total >= daily_limit:
         return False
     if assessment_type == "MiniCeX" and load.minicex >= 2:
         return False
@@ -84,18 +97,20 @@ def _select_assessor(
     assessment_type: AssessmentType,
     loads: Dict[str, Dict[str, AssessorLoad]],
     last_used: Dict[Tuple[str, str], int],
+    roster: RosterData,
 ) -> Optional[str]:
     candidates = []
     for assessor in assessors:
         key = normalize_name(assessor)
         load = loads[date_text][key]
-        if _can_accept(load, assessment_type):
+        if _can_accept(load, assessment_type, _availability_type_for_assessor(roster, date_text, assessor)):
             candidates.append(assessor)
     if not candidates:
         return None
     return sorted(
         candidates,
         key=lambda name: (
+            loads[date_text][normalize_name(name)].assessment_group != _assessment_group(assessment_type),
             loads[date_text][normalize_name(name)].total,
             last_used.get((date_text, normalize_name(name)), -1),
             normalize_name(name),
@@ -137,8 +152,6 @@ def _display_location(entry: Optional[RosterEntry]) -> str:
         return ""
     if entry.location == "Ward" and entry.ward_location:
         return f"Ward ({entry.ward_location})"
-    if entry.location == "OPS" and entry.ops_shift:
-        return f"OPS ({entry.ops_shift})"
     return entry.location
 
 
@@ -186,12 +199,14 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
     usage_counter = 0
     glf_assessee_names = tuple(sorted({need.assessee_name for need in needs if normalize_name(need.assessee_name)}, key=normalize_name))
 
+    eligible_by_date_location: Dict[Tuple[str, str], List[str]] = {}
+
     for need in needs:
         if not need.needs_allocation:
             records.append(_skipped_record(need))
             continue
 
-        roster_entries = sorted(find_roster_entries(roster, need.assessee_name), key=lambda entry: entry.date)
+        roster_entries = sorted(find_roster_entries(roster, need.assessee_name), key=lambda entry: parse_date(entry.date))
         if not roster_entries:
             records.append(_unallocated_record(need, "Assessee not found in roster workbook."))
             continue
@@ -215,7 +230,13 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
 
         for entry in compatible_entries:
             last_entry = entry
-            available = _available_assessors_for_entry(roster, entry)
+            availability_key = (entry.date, entry.location)
+            if availability_key not in eligible_by_date_location:
+                eligible_by_date_location[availability_key] = [
+                    name for name in _available_assessors_for_entry(roster, entry)
+                    if not _is_glf_assessee(name, glf_assessee_names)
+                ]
+            available = eligible_by_date_location[availability_key]
             if not available:
                 continue
 
@@ -223,8 +244,10 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
                 name
                 for name in available
                 if not _is_same_person(name, need.assessee_name)
-                and not _is_glf_assessee(name, glf_assessee_names)
-                and _can_accept(loads[entry.date][normalize_name(name)], need.assessment_type)
+                and _can_accept(
+                    loads[entry.date][normalize_name(name)], need.assessment_type,
+                    _availability_type_for_assessor(roster, entry.date, name),
+                )
             ]
             if not candidates:
                 capacity_blocked = True
@@ -249,12 +272,13 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
                 need.assessee_name,
                 current_run_assignees,
             )
-            assessor = _select_assessor(preferred, entry.date, need.assessment_type, loads, last_used)
+            assessor = _select_assessor(preferred, entry.date, need.assessment_type, loads, last_used, roster)
             if assessor is None:
                 continue
 
             assessor_key = normalize_name(assessor)
             load = loads[entry.date][assessor_key]
+            load.assessment_group = _assessment_group(need.assessment_type)
             load.total += 1
             if need.assessment_type == "MiniCeX":
                 load.minicex += 1
@@ -283,7 +307,7 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
         if allocation:
             records.append(allocation)
         elif capacity_blocked:
-            records.append(_unallocated_record(need, "All eligible assessors reached daily capacity.", last_entry))
+            records.append(_unallocated_record(need, "No eligible assessor remains after daily capacity and same-day assessment group checks.", last_entry))
         else:
             records.append(
                 _unallocated_record(

@@ -158,3 +158,33 @@ def test_ops_shift_text_extracts_shift_code_or_preserves_label() -> None:
     assert _ops_shift_text("C1") == "C1"
     assert _ops_shift_text("D") == "D"
     assert _ops_shift_text("ICT") == "ICT"
+
+
+@pytest.mark.parametrize("value", ["45", "MICA45A", "MICU68ICU", "45A75B", "{45}A", "MICA_x000D_45A"])
+def test_ward_detection_does_not_require_separators_or_suffix(value):
+    assert _has_ward_value(value)
+
+
+@pytest.mark.parametrize("marker", ["/GLF", "GLF/"])
+def test_single_sheet_roster_accepts_both_half_day_markers(marker):
+    from io import BytesIO
+    from app.services.excel_reader import load_roster_workbook_from_bytes
+
+    wb = build_roster_workbook()
+    del wb["Ignored Ward Sheet"]
+    wb.active["C7"] = marker
+    stream = BytesIO()
+    wb.save(stream)
+    roster = parse_roster(load_roster_workbook_from_bytes(stream.getvalue()))
+    assert roster.assessor_availability_type_by_date["16/04/26"]["khoo sher ri"] == "Half day GLF"
+    assert find_roster_entries(roster, "Amanda Chua")[0].ward_location == "{ACC1} 42A"
+
+
+def test_floater_row_is_not_an_assessor_or_assessee():
+    wb = build_roster_workbook()
+    wb.active["A9"] = "*floater*"
+    wb.active["B9"] = "45A"
+    wb.active["B9"].fill = WHITE
+    roster = parse_roster(wb)
+    assert "*floater*" not in roster.all_assessors
+    assert find_roster_entries(roster, "*floater*") == []

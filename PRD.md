@@ -97,7 +97,7 @@ Each row of the first worksheet is a person (name in column A), and each date co
 In the first worksheet of the roster workbook:
 
 - Rows with the `GLF` cell highlighted yellow are assessors who are free for the whole day.
-- Rows with the `/GLF` cell highlighted yellow are assessors who are free for a half day.
+- Rows with the `/GLF` or `GLF/` cell highlighted yellow are assessors who are free for a half day.
 - These assessors are eligible to perform non-ward assessments for assessees on that GLF availability date.
 
 The system must identify assessors with GLF availability by reading the cell fill colour.
@@ -334,14 +334,16 @@ Rules:
 
 ## 6. Assessment Capacity Rules
 
-Each assessor can only be assigned a maximum of 4 assessments per day.
+Each assessor can be assigned at most 4 assessments per full GLF day (`GLF`), or 2 per half GLF day (`/GLF` or `GLF/`). Ward availability defaults to the full-day limit.
 
 Each assessor can only be assigned a maximum of 2 MiniCeX assessments per day.
 
 Use these rules programmatically:
 
 ```text
-Rx Check + Dispensing + Med Recon + MiniCeX <= 4
+Full day: Rx Check + Dispensing + Med Recon + MiniCeX <= 4
+Half day: Rx Check + Dispensing + Med Recon + MiniCeX <= 2
+An assessor cannot mix MiniCeX/Med Recon with Rx Check/Dispensing on the same date.
 MiniCeX <= 2
 ```
 
@@ -356,10 +358,10 @@ Examples of valid daily combinations include:
 | 4 | 0 | 0 | 0 |
 | 0 | 4 | 0 | 0 |
 | 0 | 0 | 4 | 0 |
-| 1 | 1 | 1 | 1 |
-| 2 | 1 | 1 | 0 |
-| 1 | 0 | 2 | 1 |
-| 0 | 1 | 1 | 2 |
+| 2 | 2 | 0 | 0 |
+| 0 | 0 | 2 | 2 |
+
+These examples assume full-day availability; half-day totals must not exceed 2.
 
 Invalid examples:
 
@@ -367,6 +369,7 @@ Invalid examples:
 |---:|---:|---:|---:|---|
 | 2 | 1 | 1 | 1 | Total is 5 assessments |
 | 0 | 0 | 1 | 3 | MiniCeX exceeds 2 |
+| 1 | 0 | 1 | 0 | Assessment groups mixed |
 
 ---
 
@@ -379,9 +382,9 @@ For each assessment date:
 1. Maintain a rotating list of available assessors.
 2. Filter assessors by GLF availability.
 3. Filter assessors by location compatibility.
-4. Filter assessors by daily capacity.
+4. Filter assessors by daily capacity and exclude assessors already assigned to the other assessment group on that date.
 5. Exclude every person listed in column A of the GLF progress worksheet from the assessor candidate list, including shortened roster-name variants.
-6. Always assign the eligible assessor with the lowest number of assignments for that date.
+6. After existing-history avoidance, prefer an assessor already assigned to the same assessee on that date, then an assessor already working in the same assessment group. Among equally preferred assessors, choose the lowest assignment count for that date.
 7. If tied, assign the assessor who was least recently used.
 8. If still tied, sort by assessor name alphabetically.
 
@@ -390,7 +393,8 @@ For each assessment date:
 Before assigning an assessor, check:
 
 ```text
-assessor_total_assignments_for_date < 4
+assessor_total_assignments_for_date < (2 for Half day GLF, otherwise 4)
+assessor has no assignments from the other assessment group on that date
 ```
 
 For MiniCeX, also check:
@@ -406,7 +410,7 @@ For Rx Check, Dispensing, Med Recon, and MiniCeX:
 - Avoid assigning the same assessor already used for that assessee in the GLF second worksheet, where possible.
 - Existing assessor history must be read from that assessee's Rx Check, Dispensing, Med Recon, and MiniCeX cells.
 - Do not treat new allocations made during the current generation as repeat history. For the same assessee on the same date, prefer reusing the assessor already selected during the current generation when that assessor is eligible for the assessment location and still has capacity under the daily capacity rules.
-- If all eligible assessors were already used in the GLF second worksheet, choose the least recently used eligible assessor and mark the reason as:
+- If all eligible assessors were already used in the GLF second worksheet, apply grouping, daily load, least-recent-use and alphabetical tie-breakers to those candidates and mark the reason as:
 
 ```text
 Repeated assessor used because no alternative eligible assessor was available.
@@ -563,7 +567,7 @@ The backend API response should still return allocation records for preview in t
 
 For website preview output, the `Assessee Location` value must include the ward label in brackets for Ward allocations when available, for example `Ward (42A (1-8) RS-2)`. OPS allocations should continue to display as `OPS`.
 
-For OPS allocations, the `Assessee Location` value must include the OPS shift label in brackets when available from the green OPS roster cell, for example `OPS (A)`, `OPS (C)`, `OPS (D)`, or `OPS (ICT)`. If the workbook uses more specific labels such as `C1`, `C2`, or `X(C1)`, preserve the shift label as `OPS (C1)` or `OPS (C2)`.
+OPS locations display as `OPS`, following AGENTS.md. Shift labels may be retained internally but are not included in the preview or new-allocation workbook.
 
 The API response should also return roster availability metadata for the generated result, including:
 
@@ -588,12 +592,11 @@ This workbook must:
   - Assessment
   - Location
   - Assessor
-  - GLF Type
   - Status
   - Reason
   - Cell
 - Preserve display-ready Ward locations such as `Ward (42A (1-8) RS-2)`.
-- Preserve display-ready OPS shift locations such as `OPS (C1)` or `OPS (D)`.
+- Display OPS locations as `OPS`.
 - Be downloaded separately from the full updated GLF workbook.
 
 ### 10.2 Status Values
@@ -616,7 +619,7 @@ Use only these status values:
 | 10/03/26 | Amanda Chua Jing Yi | Y1 | Rx Check | Ward (42A (1-8) RS-2) | Cheryl | 10/03/26 | Full day GLF | Allocated |  | G45 |  |
 | 15/04/26 | Celine Sia Si Lin | Y2 | Med Recon | Ward (45A) | Gen | 15/04/26 | Half day GLF | Allocated |  | I46 |  |
 | 08/04/26 | Chan Xiao Ting, Kristy | Y3 | MiniCeX | Ward |  |  |  | Skipped - Already Allocated | Existing allocation found | J47 | Cheryl 08/04/26 |
-| 22/04/26 | Megan Goh | Y3 | Dispensing | OPS (C1) |  |  |  | Unallocated | No available assessor with OPS-compatible availability | H23 |  |
+| 22/04/26 | Megan Goh | Y3 | Dispensing | OPS |  |  |  | Unallocated | No available assessor with OPS-compatible availability | H23 |  |
 |  | Denise Song | Y4 | Rx Check |  |  |  |  | Skipped - Already Passed | Black-filled cell | G23 |  |
 
 ---
@@ -662,7 +665,7 @@ After processing, show:
 6. Download new-allocation workbook button
 7. Start date and end date controls for filtering allocated preview records by allocation date
 8. A list of assessors who were rostered as GLF/available during the selected date range but were not assigned any assessee in the filtered allocation records
-9. A `GLF Type` column showing whether the assigned assessor was `Full day GLF` or `Half day GLF`
+9. The preview columns are exactly Date, Assessee, Header, Assessment, Location, Assessor, Status, Reason, Cell, following AGENTS.md. Availability type remains API metadata.
 
 ### 11.4 Date Range Filter
 
@@ -1005,7 +1008,7 @@ Before allocation, validate:
 
 1. GLF workbook can be opened with the provided password.
 2. GLF workbook has at least 2 worksheets.
-3. Roster workbook has at least 2 worksheets.
+3. Roster workbook has at least 1 worksheet.
 4. GLF second worksheet contains expected assessment columns:
    - Rx Check
    - Dispensing
@@ -1069,7 +1072,7 @@ At minimum, test:
 7. Existing text cells are skipped.
 8. CBD and PA columns are ignored.
 9. Rx Check, Dispensing, Med Recon, and MiniCeX avoid assessors already used for the same assessee in the GLF second worksheet, where possible.
-10. Assessor max 4 assessments per day is enforced.
+10. Full-day limit 4, half-day limit 2, MiniCeX limit 2, and same-day group separation are enforced.
 11. Assessor max 2 MiniCeX per day is enforced.
 12. Dispensing only matches OPS.
 13. MiniCeX only matches Ward.
@@ -1131,7 +1134,7 @@ The project is complete when:
 9. The system skips existing allocation cells with text.
 10. The system ignores CBD and PA.
 11. The system matches assessments based on location rules.
-12. The system enforces max 4 assessments per assessor per day.
+12. The system enforces 4 assessments per full day or 2 per half day, with no same-day mixing of assessment groups.
 13. The system enforces max 2 MiniCeX per assessor per day.
 14. The system uses round-robin allocation among eligible assessors.
 15. The system avoids assessors already used for the same assessee in the GLF second worksheet for Rx Check, Dispensing, Med Recon, and MiniCeX where possible, while allowing same-run reuse when capacity permits.
@@ -1151,3 +1154,15 @@ The project is complete when:
 29. The system outputs a separate new-allocation workbook for download.
 30. The separate new-allocation workbook follows the website preview output.
 31. Errors are shown clearly to the user.
+
+
+## Allocation implementation verification
+
+The roster reader accepts a single worksheet and reads only the first worksheet. Column A identifies the person; green cells provide OPS dates, yellow `GLF`/`/GLF`/`GLF/` cells provide full/half-day availability, and white cells containing a two-digit Ward number provide Ward dates and availability. Ward detection searches the whole cell without requiring separators or a suffix, removes braces for classification, and keeps the cell text (including braces, with whitespace normalised) for display. Non-ward-only cells and floater placeholders are excluded.
+
+Allocation tracks total count, MiniCeX count, and assessment group per assessor per date. Grouping preferences apply only after eligibility, capacity, same-day group separation, and existing-history avoidance. Loads reset for each date and each generation. Regression tests cover these rules alongside existing workbook preservation and export tests.
+
+
+### Requirements reconciliation
+
+AGENTS.md takes precedence over this document. Website and allocation-only export columns are exactly Date, Assessee, Header, Assessment, Location, Assessor, Status, Reason, Cell. Ward labels preserve the white cell text with whitespace normalised; OPS displays as `OPS`. The API returns all records without a 500-record truncation. The UI shows all summary counts and provides skipped/unallocated records with reasons separately from the allocated preview. Excel RGB, indexed and workbook theme fills (including tints) are resolved by shared colour helpers. Name-only assessee rows are included, section headers and legend rows excluded, and compatible roster dates are considered chronologically.
