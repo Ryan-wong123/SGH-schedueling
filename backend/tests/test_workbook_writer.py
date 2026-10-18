@@ -177,6 +177,7 @@ def test_preview_allocation_workbook_matches_website_output_columns() -> None:
         "MiniCeX",
         "Ward (7A)",
         "Assessor",
+        "Half day GLF",
         "Allocated",
         None,
         "J2",

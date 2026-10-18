@@ -12,10 +12,10 @@ from app.utils.names import names_prefix_match, normalize_name
 
 
 SKIP_ROSTER_VALUES = {"", "glf", "x", "off", "al", "mc", "leave", "hl", "ops", "floater"}
-# A ward value is a two-digit ward number, optionally followed by a letter or bracket, e.g. 11B,
+# A ward value is a two-digit ward number followed by a letter or bracket, e.g. 11B,
 # 45A, 58 ISO, 63(12-14), 68ICU. Single digits (NICU-1, MSF (2-5)) and times (10am)
 # are not ward numbers.
-WARD_VALUE_PATTERN = re.compile(r"(?<![0-9-])\d{2}(?!\d)(?!\s*[ap]\.?m\b)", re.IGNORECASE)
+WARD_VALUE_PATTERN = re.compile(r"(?<![A-Za-z0-9-])\d{2}(?!\d)(?!\s*[ap]\.?m\b)\s?[A-Za-z(]", re.IGNORECASE)
 OPS_SHIFT_PATTERN = re.compile(r"\b([A-F](?:[12]|\+)?)\b|\(([A-F](?:[12]|\+)?)\)|(\?)", re.IGNORECASE)
 
 
@@ -50,7 +50,7 @@ def _add_entry(entries: Dict[str, List[RosterEntry]], name: str, entry: RosterEn
 
 def _strip_braces(text: str) -> str:
     # Braces are only markers; the text inside is classified like any other value.
-    return text.replace("{", "").replace("}", "")
+    return text.replace("{", " ").replace("}", " ")
 
 
 def _ward_location_text(value: object) -> str:
@@ -74,7 +74,7 @@ def _ops_shift_text(value: object) -> str:
 def _has_ward_value(value: object) -> bool:
     if value is None:
         return False
-    return bool(WARD_VALUE_PATTERN.search(_strip_braces(_ward_location_text(value))))
+    return bool(WARD_VALUE_PATTERN.search(_strip_braces(str(value).replace("\xa0", " "))))
 
 
 def _add_available(
@@ -96,7 +96,7 @@ def _add_available(
 
 def _glf_availability_type(value: object) -> GlfAvailabilityType:
     text = str(value).replace("\xa0", " ").strip().casefold() if value is not None else ""
-    if text in {"/glf", "glf/"}:
+    if text == "/glf":
         return "Half day GLF"
     if text == "glf":
         return "Full day GLF"
@@ -117,7 +117,7 @@ def _parse_primary_roster_sheet(
         if name_value is None:
             continue
         name = str(name_value).strip()
-        if not _is_schedule_value(name):
+        if not name:
             continue
 
         for col, date_text in date_columns.items():
