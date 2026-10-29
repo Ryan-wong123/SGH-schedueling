@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import heapq
 from collections import defaultdict
-from dataclasses import dataclass
+from datetime import date
 from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 
 from app.models.allocation import (
@@ -14,8 +15,10 @@ from app.models.allocation import (
     RosterData,
     RosterEntry,
 )
-from app.services.roster_parser import find_roster_entries
-from app.utils.names import names_prefix_match, normalize_name
+from app.services.day_assignment import ASSESSMENT_GROUPS, DayTask, solve_day
+from app.services.roster_parser import find_roster_entries, is_listed_in_roster
+from app.utils.dates import parse_date
+from app.utils.names import names_token_match, normalize_name
 
 
 ASSESSMENT_LOCATIONS: Dict[AssessmentType, Set[LocationType]] = {
@@ -26,10 +29,21 @@ ASSESSMENT_LOCATIONS: Dict[AssessmentType, Set[LocationType]] = {
 }
 
 
-@dataclass
-class AssessorLoad:
-    total: int = 0
-    minicex: int = 0
+def _date_sort_key(date_text: str) -> Tuple[int, date, str]:
+    # Roster dates are dd/mm/yy text, so sort by the real date, not the string.
+    parsed = parse_date(date_text)
+    return (0, parsed, date_text) if parsed else (1, date.max, date_text)
+
+
+def sort_records_for_preview(records: List[AllocationRecord]) -> List[AllocationRecord]:
+    """Order records by date, then assessee; records without a date go last in GLF order."""
+    def key(record: AllocationRecord) -> Tuple[int, date, str]:
+        parsed = parse_date(record.date)
+        if parsed is None:
+            return (1, date.max, "")
+        return (0, parsed, normalize_name(record.assessee_name))
+
+    return sorted(records, key=key)
 
 
 def summarize_records(records: List[AllocationRecord]) -> Dict[str, int]:
@@ -56,73 +70,18 @@ def _existing_matches_assessor(existing: Tuple[str, ...], assessor_name: str) ->
     return False
 
 
-def _can_accept(load: AssessorLoad, assessment_type: AssessmentType) -> bool:
-    if load.total >= 4:
-        return False
-    if assessment_type == "MiniCeX" and load.minicex >= 2:
-        return False
-    return True
-
-
 def _is_same_person(first_name: str, second_name: str) -> bool:
     first = normalize_name(first_name)
     second = normalize_name(second_name)
     return bool(
         first
         and second
-        and (first == second or names_prefix_match(first_name, second_name) or names_prefix_match(second_name, first_name))
+        and (first == second or names_token_match(first_name, second_name) or names_token_match(second_name, first_name))
     )
 
 
 def _is_glf_assessee(candidate_name: str, glf_assessee_names: Tuple[str, ...]) -> bool:
     return any(_is_same_person(candidate_name, assessee_name) for assessee_name in glf_assessee_names)
-
-
-def _select_assessor(
-    assessors: List[str],
-    date_text: str,
-    assessment_type: AssessmentType,
-    loads: Dict[str, Dict[str, AssessorLoad]],
-    last_used: Dict[Tuple[str, str], int],
-) -> Optional[str]:
-    candidates = []
-    for assessor in assessors:
-        key = normalize_name(assessor)
-        load = loads[date_text][key]
-        if _can_accept(load, assessment_type):
-            candidates.append(assessor)
-    if not candidates:
-        return None
-    return sorted(
-        candidates,
-        key=lambda name: (
-            loads[date_text][normalize_name(name)].total,
-            last_used.get((date_text, normalize_name(name)), -1),
-            normalize_name(name),
-        ),
-    )[0]
-
-
-def _prefer_same_day_assessee_assessor(
-    candidates: List[str],
-    date_text: str,
-    assessee_name: str,
-    current_run_assignees: Dict[Tuple[str, str], List[str]],
-) -> List[str]:
-    same_assessee_key = (date_text, normalize_name(assessee_name))
-    previous_assessors = current_run_assignees.get(same_assessee_key, [])
-    if not previous_assessors:
-        return candidates
-
-    candidate_keys = {normalize_name(candidate) for candidate in candidates}
-    reusable = [
-        assessor
-        for assessor in previous_assessors
-        if normalize_name(assessor) in candidate_keys
-    ]
-    if reusable:
-        return reusable
-    return candidates
 
 
 def _available_assessors_for_entry(roster: RosterData, entry: RosterEntry) -> List[str]:
@@ -178,93 +137,126 @@ def _unallocated_record(need: GlfAssessmentNeed, reason: str, entry: Optional[Ro
     )
 
 
-def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> List[AllocationRecord]:
-    records: List[AllocationRecord] = []
-    loads: DefaultDict[str, DefaultDict[str, AssessorLoad]] = defaultdict(lambda: defaultdict(AssessorLoad))
-    last_used: Dict[Tuple[str, str], int] = {}
-    current_run_assignees: DefaultDict[Tuple[str, str], List[str]] = defaultdict(list)
-    usage_counter = 0
-    glf_assessee_names = tuple(sorted({need.assessee_name for need in needs if normalize_name(need.assessee_name)}, key=normalize_name))
+CAPACITY_REASON = (
+    "All eligible assessors reached daily capacity, or are half-day assessors on a different assessment group that day."
+)
+NO_ASSESSOR_REASON = "No eligible assessor found for this assessee, assessment, date, and location."
+REPEAT_REASON = "Repeated assessor used because no alternative eligible assessor was available."
 
-    for need in needs:
+
+def _eligible_assessors(
+    roster: RosterData,
+    entry: RosterEntry,
+    assessee_name: str,
+    glf_assessee_names: Tuple[str, ...],
+) -> Tuple[str, ...]:
+    return tuple(
+        name
+        for name in _available_assessors_for_entry(roster, entry)
+        if not _is_same_person(name, assessee_name) and not _is_glf_assessee(name, glf_assessee_names)
+    )
+
+
+def _repeat_assessors(need: GlfAssessmentNeed, eligible: Tuple[str, ...]) -> frozenset:
+    if need.assessment_type not in REPEAT_AVOIDANCE_ASSESSMENTS:
+        return frozenset()
+    return frozenset(name for name in eligible if _existing_matches_assessor(need.existing_assessors_for_row, name))
+
+
+def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> List[AllocationRecord]:
+    """Allocate assessors in two steps.
+
+    1. Each assessment starts on its earliest roster day that has an eligible assessor.
+    2. Each day is solved as a whole (`solve_day`), so all of that day's assessments are
+       known when assessors are chosen and the fewest assessors are used. Assessments that
+       do not fit move to the assessee's next roster day, which is solved later.
+    """
+    records: Dict[int, AllocationRecord] = {}
+    glf_assessee_names = tuple(sorted({need.assessee_name for need in needs if normalize_name(need.assessee_name)}, key=normalize_name))
+    # For each assessment: its remaining (entry, eligible assessors) options in date order.
+    options_by_need: Dict[int, List[Tuple[RosterEntry, Tuple[str, ...]]]] = {}
+    last_entry_by_need: Dict[int, RosterEntry] = {}
+    pending_by_date: DefaultDict[str, List[int]] = defaultdict(list)
+    date_queue: List[Tuple[Tuple[int, date, str], str]] = []
+
+    def schedule(index: int) -> bool:
+        options = options_by_need[index]
+        if not options:
+            return False
+        date_text = options[0][0].date
+        if not pending_by_date[date_text]:
+            heapq.heappush(date_queue, (_date_sort_key(date_text), date_text))
+        pending_by_date[date_text].append(index)
+        return True
+
+    for index, need in enumerate(needs):
         if not need.needs_allocation:
-            records.append(_skipped_record(need))
+            records[index] = _skipped_record(need)
             continue
 
-        roster_entries = sorted(find_roster_entries(roster, need.assessee_name), key=lambda entry: entry.date)
+        roster_entries = sorted(find_roster_entries(roster, need.assessee_name), key=lambda entry: _date_sort_key(entry.date))
         if not roster_entries:
-            records.append(_unallocated_record(need, "Assessee not found in roster workbook."))
+            reason = (
+                "Assessee found in roster but has no Ward or OPS days."
+                if is_listed_in_roster(roster, need.assessee_name)
+                else "Assessee not found in roster workbook."
+            )
+            records[index] = _unallocated_record(need, reason)
             continue
 
         compatible_entries = [
             entry for entry in roster_entries if is_location_compatible(need.assessment_type, entry.location)
         ]
         if not compatible_entries:
-            records.append(
-                _unallocated_record(
-                    need,
-                    f"No roster entry with {need.assessment_type}-compatible location.",
-                    roster_entries[0],
-                )
+            records[index] = _unallocated_record(
+                need,
+                f"No roster entry with {need.assessment_type}-compatible location.",
+                roster_entries[0],
             )
             continue
 
-        allocation: Optional[AllocationRecord] = None
-        last_entry = compatible_entries[0]
-        capacity_blocked = False
+        last_entry_by_need[index] = compatible_entries[-1]
+        options_by_need[index] = [
+            (entry, eligible)
+            for entry in compatible_entries
+            if (eligible := _eligible_assessors(roster, entry, need.assessee_name, glf_assessee_names))
+        ]
+        if not schedule(index):
+            records[index] = _unallocated_record(need, NO_ASSESSOR_REASON, compatible_entries[-1])
 
-        for entry in compatible_entries:
-            last_entry = entry
-            available = _available_assessors_for_entry(roster, entry)
-            if not available:
-                continue
-
-            candidates = [
-                name
-                for name in available
-                if not _is_same_person(name, need.assessee_name)
-                and not _is_glf_assessee(name, glf_assessee_names)
-                and _can_accept(loads[entry.date][normalize_name(name)], need.assessment_type)
-            ]
-            if not candidates:
-                capacity_blocked = True
-                continue
-
-            preferred = candidates
-            repeated_fallback = False
-            if need.assessment_type in REPEAT_AVOIDANCE_ASSESSMENTS:
-                non_repeated = [
-                    name
-                    for name in candidates
-                    if not _existing_matches_assessor(need.existing_assessors_for_row, name)
-                ]
-                if non_repeated:
-                    preferred = non_repeated
-                elif need.existing_assessors_for_row:
-                    repeated_fallback = True
-
-            preferred = _prefer_same_day_assessee_assessor(
-                preferred,
-                entry.date,
-                need.assessee_name,
-                current_run_assignees,
+    while date_queue:
+        _, date_text = heapq.heappop(date_queue)
+        indexes = pending_by_date.pop(date_text, [])
+        if not indexes:
+            continue
+        entry_by_index = {index: options_by_need[index][0][0] for index in indexes}
+        tasks = [
+            DayTask(
+                key=index,
+                assessment_type=needs[index].assessment_type,
+                eligible=options_by_need[index][0][1],
+                repeat_assessors=_repeat_assessors(needs[index], options_by_need[index][0][1]),
+                has_later_day=len(options_by_need[index]) > 1,
             )
-            assessor = _select_assessor(preferred, entry.date, need.assessment_type, loads, last_used)
-            if assessor is None:
-                continue
+            for index in indexes
+        ]
+        assignment = solve_day(
+            tasks,
+            lambda name: _availability_type_for_assessor(roster, date_text, name),
+        )
 
-            assessor_key = normalize_name(assessor)
-            load = loads[entry.date][assessor_key]
-            load.total += 1
-            if need.assessment_type == "MiniCeX":
-                load.minicex += 1
-            usage_counter += 1
-            last_used[(entry.date, assessor_key)] = usage_counter
-            same_assessee_key = (entry.date, normalize_name(need.assessee_name))
-            if assessor not in current_run_assignees[same_assessee_key]:
-                current_run_assignees[same_assessee_key].append(assessor)
-            reason = "Repeated assessor used because no alternative eligible assessor was available." if repeated_fallback else ""
-            allocation = AllocationRecord(
+        for task in tasks:
+            index = task.key
+            need = needs[index]
+            entry = entry_by_index[index]
+            assessor = assignment.get(index)
+            if assessor is None:
+                # No room today: try the assessee's next roster day.
+                options_by_need[index].pop(0)
+                if not schedule(index):
+                    records[index] = _unallocated_record(need, CAPACITY_REASON, entry)
+                continue
+            records[index] = AllocationRecord(
                 date=entry.date,
                 assessee_name=need.assessee_name,
                 glf_section_header=need.glf_section_header,
@@ -274,23 +266,9 @@ def allocate_assessments(needs: List[GlfAssessmentNeed], roster: RosterData) -> 
                 assessor_glf_availability_date=entry.date,
                 assessor_glf_availability_type=_availability_type_for_assessor(roster, entry.date, assessor),
                 status="Allocated",
-                reason=reason,
+                reason=REPEAT_REASON if assessor in task.repeat_assessors else "",
                 original_glf_cell_reference=need.original_glf_cell_reference,
                 existing_allocation_history=need.existing_allocation_history,
             )
-            break
 
-        if allocation:
-            records.append(allocation)
-        elif capacity_blocked:
-            records.append(_unallocated_record(need, "All eligible assessors reached daily capacity.", last_entry))
-        else:
-            records.append(
-                _unallocated_record(
-                    need,
-                    "No eligible assessor found for this assessee, assessment, date, and location.",
-                    last_entry,
-                )
-            )
-
-    return records
+    return [records[index] for index in range(len(needs))]

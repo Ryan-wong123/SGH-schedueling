@@ -38,9 +38,11 @@ Codex should use these project markdown files as the source of truth:
 
 When requirements conflict, follow this priority order:
 
-1. `PRD.md`
-2. `ARCHITECTURE.md`
-4. `AGENTS.md`
+1. `AGENTS.md` 
+2. `PRD.md`
+3. `ARCHITECTURE.md`
+
+Update the `PRD.md` and `ARCHITECTURE.md` whenever something is changed or implemented.
 
 ---
 
@@ -51,8 +53,14 @@ The system must:
 1. Accept both Excel workbook uploads.
 2. Accept the GLF workbook password from the user.
 3. Read the password-protected GLF workbook.
-4. Use the first worksheet of the Roster Ward Allocation Workbook for OPS entries and non-ward GLF availability.
-5. Use the second worksheet of the Roster Ward Allocation Workbook for Ward date/location allocation.
+4. Use the first worksheet of the Roster Ward Allocation Workbook for OPS entries (Rx Check & Dispensing) which uses cells that are green in color.
+5. Use the first worksheet of the Roster Ward Allocation Workbook for Ward entries (miniCeX & Med Recon) which uses the cells that are in white color.
+   - Do not rely on separators. Values in a cell may be split by line breaks, commas, slashes or spaces, or written together with no separator at all.
+   - A ward value is a two-digit ward number, usually followed by a letter, suffix or bracketed bed range (e.g. `11B`, `45A`, `58 ISO`, `58ISO`, `63(12-14)`, `68ICU`, `46B1,C`). Search the whole cell text for one, wherever it appears.
+   - Everything else is a non-ward value, e.g. Admin, LTX, MICU, Burns, MICA, CTS, IPAS/IDD, MSF (2-5), DI, SGH@Home Command Centre, WR - RS, WR - IM, WR - AMW, Clinic-1, Clinic-2/RTxC, INF, HDL, MIC, NICU-1, SB, DD, /oc, vl. Single-digit numbers inside these (`NICU-1`, `Clinic-2`, `MSF (2-5)`, `MIC2`) are not ward numbers.
+   - If a white cell contains no ward value, exclude the whole cell from Ward allocation (e.g. `CTS`, `DI`, `MICU / Burns`, `IPAS/IDD / MSF (2-5)`).
+   - If a white cell contains at least one ward value, use the cell for Ward allocation even if it also contains non-ward values (e.g. `45A / MICA`, `75B/C / SB`, `45AMICA`).
+   - Braces `{...}` are ignored: remove the `{` and `}` characters and classify the text inside like any other value. `{45A}` is a ward value; `{ACC1}`, `{NICU-1}`, `{CVM}`, `{CICU}` are non-ward values. So `{45A}` and `67A / {CICU}` are used, while `{CICU}` alone is excluded.
 6. Use the second worksheet of the GLF Assessment Workbook as the current assessment progress worksheet.
 7. Preserve the GLF section header above each assessee row for the website preview table.
 8. Allocate assessors only for blank assessment cells in these columns:
@@ -60,12 +68,16 @@ The system must:
    - Dispensing
    - Med Recon
    - MiniCeX
-9. Skip black-filled cells because they indicate the assessee has passed out of the assessment.
-10. Skip cells with existing text because they already contain allocation history.
-11. Ignore CBD and PA for automatic allocation.
+9. For GLF Assessment Workbook, skip black-filled cells because they indicate the assessee has passed out of the assessment.
+10. For GLF Assessment Workbook, skip cells with existing text because they already contain allocation history.
+11. For GLF Assessment Workbook, ignore CBD and PA columns for allocation.
 12. Enforce daily assessor limits:
-    - Maximum 4 total assessments per assessor per day
+    - Maximum 4 total assessments per assessor per day on a Full day GLF (`GLF`)
+    - Maximum 2 total assessments per assessor per day on a Half day GLF (`/GLF` or `GLF/`)
     - Maximum 2 MiniCeX assessments per assessor per day
+    - Full day GLF assessors may mix MiniCeX/Med Recon with Rx Check (prescription check)/Dispensing on the same day, within the limits above.
+    - Half day GLF assessors cannot do MiniCeX or Med Recon on the same day as Rx Check or Dispensing. Each half-day assessor's day is either a MiniCeX/Med Recon day or an Rx Check/Dispensing day, never both.
+    - Where possible, group an assessor's assessments for the day: prefer giving MiniCeX and Med Recon together, or Rx Check and Dispensing together (for example, the same assessee's MiniCeX and Med Recon to the same assessor on the same day).
 13. Use round-robin allocation among eligible assessors.
 14. Never select a person listed in column A of the GLF progress worksheet as an assessor, including shortened roster-name variants.
 15. Never assign an assessee to themself, including shortened roster-name variants.
@@ -154,16 +166,16 @@ The system must inspect cell fill colours, not only cell values.
 
 ### Roster Workbook
 
-- Use the first worksheet for OPS entries and GLF availability outside Ward allocation.
-- Use the second worksheet for Ward allocation.
-- In the second worksheet, use only white cells for Ward date/location data.
-- White Ward cells containing `{...}` are occupied/manual Ward allocation cells and must be ignored entirely for automatic allocation. Names inside and outside `{...}` in that cell must not be treated as assessees or assessors.
-- White Ward cells without `{...}` identify Ward availability and create Ward date/location entries for the same names. Assessment candidates remain the people in column A of the second GLF workbook worksheet, and those names must not be selected as assessors.
-- The Ward location label comes from column A on the same row as the white Ward cell.
-- Ignore `floater` / `*floater*` roster placeholders.
-- Ignore non-white cells in the second worksheet for Ward allocation.
+- Use the first worksheet for everything: OPS entries, GLF availability, and Ward allocation. Other roster worksheets are not read.
+- In the first worksheet, each row is a person (name in column A) and each date column holds that person's location for the day.
 - Green cells in the first worksheet indicate OPS.
-- Yellow GLF cells in the first worksheet identify assessors available for non-ward allocation.
+- Yellow colored cells with the value "GLF" in the first worksheet identify assessors available for allocation.
+- White cells in the first worksheet are Ward cells, filtered in this order:
+  1. Remove any `{` and `}` characters, then ignore white cells with no ward value (see High-Level Requirement 5).
+  2. Remaining white cells create a Ward availability and a Ward date/location entry for the person in column A of that row. Assessment candidates remain the people in column A of the second GLF workbook worksheet, and those names must not be selected as assessors.
+- The Ward location label is the full text of the white Ward cell itself, keeping any `{` and `}` characters (e.g. `45A MICA`, `67A {CICU}`). Braces are removed only when checking for a ward value.
+- Ignore `floater` / `*floater*` roster placeholders.
+- Ignore non-white, non-green, non-yellow cells for allocation.
 
 Because Excel colours may appear as RGB, indexed, or theme colours, create tolerant helper functions for colour detection.
 
@@ -183,16 +195,24 @@ Assessment location compatibility:
 Assessor capacity:
 
 ```text
-Rx Check + Dispensing + Med Recon + MiniCeX <= 4
+Full day GLF:  Rx Check + Dispensing + Med Recon + MiniCeX <= 4
+Half day GLF:  Rx Check + Dispensing + Med Recon + MiniCeX <= 2
 MiniCeX <= 2
+Half day GLF only: (MiniCeX or Med Recon) and (Rx Check or Dispensing) never mixed for one assessor on one day
+Full day GLF: groups may be mixed
 ```
 
-Round-robin selection:
+Assessor selection (two steps):
 
-1. Filter eligible assessors by date, GLF availability, location, and capacity.
-2. Pick the eligible assessor with the fewest assignments for that date.
-3. If tied, pick the assessor least recently used.
-4. If still tied, sort by assessor name alphabetically.
+1. Pick each assessment's date: the assessee's earliest roster day (real date order) with at least one eligible assessor (GLF availability, location, not themself, not a GLF assessee).
+2. Solve each date as a whole, once all of that date's assessments are known. Choose the arrangement that, in priority order:
+   1. allocates the most assessments, within capacity (4 full day, 2 half day, MiniCeX at most 2) and the half-day no-mixing rule;
+   2. when a day is full, leaves out assessments that have another roster day rather than ones that would go unallocated;
+   3. repeats the fewest past assessors (Requirement 16);
+   4. uses the fewest assessors that day;
+   5. has the fewest full-day assessors mixing MiniCeX/Med Recon with Rx Check/Dispensing.
+   Remaining ties are broken by preferring assessors already working that day, then by assessor name alphabetically.
+3. Assessments that do not fit on their date move to the assessee's next roster day, and that date is solved in turn.
 
 ---
 
@@ -240,7 +260,7 @@ The website preview table must:
 2. Populate `Header` from the most recent GLF section header above the assessee row, such as `Y10`, `Y7`, `Y1`, or `New Pre-reg > OPRs`.
 3. Show Ward locations as `Ward (<ward location>)` when a Ward location label is available from the roster workbook.
 4. Match the separate new-allocation workbook columns for allocated records.
-5. Continue to show OPS locations as `OPS`.
+5. Show OPS locations as `OPS (<shift>)` using the shift label from the green OPS cell (e.g. `OPS (C1)`), or `OPS` when no shift label is available.
 
 ---
 
@@ -271,9 +291,10 @@ When implementing or modifying the system, add or update tests for:
 - Workbook password handling
 - GLF second worksheet parsing
 - Roster first worksheet parsing
-- Roster second worksheet Ward parsing
-- Brace-containing Ward cells do not create automatic assessee entries or assessor availability
-- Ward assessor selection from second worksheet white cells
+- Roster first worksheet Ward parsing from white cells
+- Braces are removed from Ward cells and the inner text is classified as ward or non-ward like any other value
+- White cells with no ward value are excluded; white cells mixing ward and non-ward values are used
+- Ward assessor selection from first worksheet white cells
 - GLF section header extraction for preview records
 - Ward location label extraction for preview records
 - Cell colour classification
@@ -281,8 +302,11 @@ When implementing or modifying the system, add or update tests for:
 - Assessment cell status classification
 - Capacity rules
 - MiniCeX limit
+- Half day GLF limit of 2 assessments
+- MiniCeX/Med Recon never mixed with Rx Check/Dispensing for a half-day assessor on the same day; full-day assessors may mix
+- Preference for grouping MiniCeX with Med Recon, and Rx Check with Dispensing
 - Location compatibility
-- Round-robin assignment
+- Per-day assessor solving: fewest assessors per day, and assessments that do not fit move to the next roster day
 - Output worksheet creation
 - Blue highlight on newly allocated copied assessment cells
 - Worksheet preservation
