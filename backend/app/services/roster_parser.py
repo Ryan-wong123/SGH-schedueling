@@ -8,7 +8,7 @@ from app.models.allocation import GlfAvailabilityType, LocationType, RosterData,
 from app.utils.colours import is_green_fill, is_white_fill, is_yellow_fill
 from app.utils.dates import format_date, parse_date
 from app.utils.errors import AppError
-from app.utils.names import names_prefix_match, normalize_name
+from app.utils.names import names_token_match, normalize_name
 
 
 SKIP_ROSTER_VALUES = {"", "glf", "x", "off", "al", "mc", "leave", "hl", "ops", "floater"}
@@ -96,7 +96,7 @@ def _add_available(
 
 def _glf_availability_type(value: object) -> GlfAvailabilityType:
     text = str(value).replace("\xa0", " ").strip().casefold() if value is not None else ""
-    if text == "/glf":
+    if text in ("/glf", "glf/"):
         return "Half day GLF"
     if text == "glf":
         return "Full day GLF"
@@ -110,7 +110,8 @@ def _parse_primary_roster_sheet(
     availability_type_by_date: Dict[str, Dict[str, GlfAvailabilityType]],
     entries: Dict[str, List[RosterEntry]],
     ward_assessors_by_source_cell: Dict[str, List[str]],
-) -> None:
+) -> List[str]:
+    roster_names: List[str] = []
     date_row, date_columns = _find_date_columns(ws)
     for row_index in range(date_row + 1, ws.max_row + 1):
         name_value = ws.cell(row_index, 1).value
@@ -119,6 +120,7 @@ def _parse_primary_roster_sheet(
         name = str(name_value).strip()
         if not name:
             continue
+        roster_names.append(name)
 
         for col, date_text in date_columns.items():
             cell = ws.cell(row_index, col)
@@ -126,15 +128,17 @@ def _parse_primary_roster_sheet(
             text = str(value).strip() if value is not None else ""
             availability_type = _glf_availability_type(text)
             if availability_type and is_yellow_fill(cell):
-                _add_available(
-                    available,
-                    available_by_location,
-                    availability_type_by_date,
-                    date_text,
-                    "OPS",
-                    name,
-                    availability_type,
-                )
+                # GLF assessors can assess both Ward and OPS entries.
+                for location in ("Ward", "OPS"):
+                    _add_available(
+                        available,
+                        available_by_location,
+                        availability_type_by_date,
+                        date_text,
+                        location,
+                        name,
+                        availability_type,
+                    )
                 continue
             if not _is_schedule_value(value):
                 continue
@@ -157,6 +161,7 @@ def _parse_primary_roster_sheet(
                     ops_shift=_ops_shift_text(value),
                 ),
             )
+    return roster_names
 
 
 def _add_ward_cell(
@@ -198,7 +203,7 @@ def parse_roster(workbook) -> RosterData:
     entries: DefaultDict[str, List[RosterEntry]] = defaultdict(list)
     ward_assessors_by_source_cell: Dict[str, List[str]] = {}
 
-    _parse_primary_roster_sheet(
+    roster_names = _parse_primary_roster_sheet(
         workbook.worksheets[0],
         available,
         available_by_location,
@@ -232,7 +237,20 @@ def parse_roster(workbook) -> RosterData:
         ward_assessors_by_source_cell,
         all_assessors,
         {date_text: dict(types) for date_text, types in availability_type_by_date.items()},
+        roster_names,
     )
+
+
+def _matching_roster_names(names: List[str], assessee_name: str) -> List[str]:
+    normalized = normalize_name(assessee_name)
+    exact = [name for name in names if normalize_name(name) == normalized]
+    if exact:
+        return exact
+    return [name for name in names if names_token_match(assessee_name, name)]
+
+
+def is_listed_in_roster(roster: RosterData, assessee_name: str) -> bool:
+    return len(_matching_roster_names(roster.roster_names, assessee_name)) == 1
 
 
 def find_roster_entries(roster: RosterData, assessee_name: str) -> List[RosterEntry]:
@@ -242,7 +260,7 @@ def find_roster_entries(roster: RosterData, assessee_name: str) -> List[RosterEn
         return exact
     candidates: List[List[RosterEntry]] = []
     for roster_name, entries in roster.assessee_entries_by_name.items():
-        if names_prefix_match(assessee_name, roster_name):
+        if names_token_match(assessee_name, roster_name):
             candidates.append(entries)
     if len(candidates) == 1:
         return candidates[0]

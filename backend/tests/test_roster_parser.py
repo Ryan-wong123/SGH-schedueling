@@ -2,7 +2,13 @@ import pytest
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill
 
-from app.services.roster_parser import _has_ward_value, _ops_shift_text, find_roster_entries, parse_roster
+from app.services.roster_parser import (
+    _glf_availability_type,
+    _has_ward_value,
+    _ops_shift_text,
+    find_roster_entries,
+    parse_roster,
+)
 
 
 WHITE = PatternFill(fill_type="solid", fgColor="FFFFFFFF")
@@ -58,8 +64,8 @@ def test_roster_parser_uses_first_sheet_white_ward_cells_for_assessors_and_asses
         "17/04/26": {"amanda chua": "Full day GLF"},
     }
     assert roster.available_assessors_by_date_location == {
-        "15/04/26": {"OPS": ["Genevieve Subur"], "Ward": ["Amanda Chua"]},
-        "16/04/26": {"OPS": ["Khoo Sher Ri"]},
+        "15/04/26": {"OPS": ["Genevieve Subur"], "Ward": ["Amanda Chua", "Genevieve Subur"]},
+        "16/04/26": {"OPS": ["Khoo Sher Ri"], "Ward": ["Khoo Sher Ri"]},
         "17/04/26": {"Ward": ["Amanda Chua"]},
     }
     assert roster.ward_assessors_by_source_cell == {"B6": ["Amanda Chua"], "D6": ["Amanda Chua"]}
@@ -158,3 +164,22 @@ def test_ops_shift_text_extracts_shift_code_or_preserves_label() -> None:
     assert _ops_shift_text("C1") == "C1"
     assert _ops_shift_text("D") == "D"
     assert _ops_shift_text("ICT") == "ICT"
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("GLF", "Full day GLF"),
+        ("glf", "Full day GLF"),
+        ("/GLF", "Half day GLF"),
+        ("GLF/", "Half day GLF"),
+        ("AL", ""),
+    ],
+)
+def test_glf_availability_type_reads_full_and_half_day_markers(value: str, expected: str) -> None:
+    assert _glf_availability_type(value) == expected
+
+
+def test_roster_parser_lists_every_column_a_name() -> None:
+    roster = parse_roster(build_roster_workbook())
+    assert roster.roster_names == ["Genevieve Subur", "Amanda Chua", "Khoo Sher Ri", "Fiona Yeo"]

@@ -50,6 +50,7 @@ class RosterData:
     ward_assessors_by_source_cell: Dict[str, List[str]] = field(default_factory=dict)
     all_assessors: List[str] = field(default_factory=list)
     assessor_availability_type_by_date: Dict[str, Dict[str, GlfAvailabilityType]] = field(default_factory=dict)
+    roster_names: List[str] = field(default_factory=list)
 
 
 @dataclass
