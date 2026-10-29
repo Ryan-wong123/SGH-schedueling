@@ -1,7 +1,7 @@
 from typing import Dict, List
 
-from app.models.allocation import GlfAssessmentNeed, RosterData, RosterEntry
-from app.services.allocation_service import allocate_assessments, summarize_records
+from app.models.allocation import AllocationRecord, GlfAssessmentNeed, RosterData, RosterEntry
+from app.services.allocation_service import allocate_assessments, sort_records_for_preview, summarize_records
 
 
 def make_need(name: str, assessment: str, cell: str = "G2", existing=()) -> GlfAssessmentNeed:
@@ -34,20 +34,62 @@ def test_location_compatibility_for_dispensing_and_minicex() -> None:
     assert records[1].status == "Unallocated"
 
 
-def test_round_robin_picks_fewest_loaded_assessor() -> None:
-    roster = roster_for(
-        [
-            RosterEntry("P1", "15/04/26", "Ward"),
-            RosterEntry("P2", "15/04/26", "Ward"),
-            RosterEntry("P3", "15/04/26", "Ward"),
-        ],
+def test_same_group_preference_fills_an_assessor_before_round_robin_moves_on() -> None:
+    entries = [RosterEntry(f"P{i}", "15/04/26", "Ward") for i in range(1, 6)]
+    roster = roster_for(entries, {"15/04/26": ["Assessor B", "Assessor A"]})
+    records = allocate_assessments([make_need(f"P{i}", "Rx Check", f"G{i}") for i in range(1, 6)], roster)
+    assert [record.assigned_assessor for record in records] == ["Assessor A"] * 4 + ["Assessor B"]
+
+
+def test_half_day_assessors_keep_assessment_groups_apart() -> None:
+    entries = [RosterEntry(f"P{i}", "15/04/26", "Ward") for i in range(1, 4)]
+    roster = RosterData(
         {"15/04/26": ["Assessor A", "Assessor B"]},
+        {entry.assessee_name.casefold(): [entry] for entry in entries},
+        assessor_availability_type_by_date={"15/04/26": {"assessor a": "Half day GLF", "assessor b": "Half day GLF"}},
     )
     records = allocate_assessments(
-        [make_need("P1", "Rx Check", "G2"), make_need("P2", "Rx Check", "G3"), make_need("P3", "Rx Check", "G4")],
+        [make_need("P1", "Rx Check", "G2"), make_need("P2", "MiniCeX", "J3"), make_need("P3", "Med Recon", "I4")],
         roster,
     )
-    assert [record.assigned_assessor for record in records] == ["Assessor A", "Assessor B", "Assessor A"]
+    assert [record.assigned_assessor for record in records] == ["Assessor A", "Assessor B", "Assessor B"]
+
+
+def mixed_group_needs() -> List[GlfAssessmentNeed]:
+    return [make_need("P1", "Dispensing", "H2"), make_need("P2", "Med Recon", "I3"), make_need("P3", "MiniCeX", "J4")]
+
+
+def mixed_group_roster(availability_type: str) -> RosterData:
+    entries = [RosterEntry("P1", "15/04/26", "OPS"), RosterEntry("P2", "15/04/26", "Ward"), RosterEntry("P3", "15/04/26", "Ward")]
+    return RosterData(
+        {"15/04/26": ["Assessor A"]},
+        {entry.assessee_name.casefold(): [entry] for entry in entries},
+        assessor_availability_type_by_date={"15/04/26": {"assessor a": availability_type}},
+    )
+
+
+def test_half_day_assessor_never_mixes_minicex_med_recon_with_rx_check_dispensing() -> None:
+    records = allocate_assessments(mixed_group_needs(), mixed_group_roster("Half day GLF"))
+    # Whole-day solving picks the group that allocates the most: Med Recon + MiniCeX (2) over Dispensing (1).
+    assert [record.status for record in records] == ["Unallocated", "Allocated", "Allocated"]
+    assert [record.assigned_assessor for record in records[1:]] == ["Assessor A", "Assessor A"]
+    assert "different assessment group" in records[0].reason
+
+
+def test_full_day_assessor_may_mix_assessment_groups() -> None:
+    records = allocate_assessments(mixed_group_needs(), mixed_group_roster("Full day GLF"))
+    assert [record.assigned_assessor for record in records] == ["Assessor A"] * 3
+
+
+def test_half_day_glf_assessor_takes_at_most_two_assessments() -> None:
+    entries = [RosterEntry(f"P{i}", "15/04/26", "Ward") for i in range(1, 5)]
+    roster = RosterData(
+        {"15/04/26": ["Assessor A"]},
+        {entry.assessee_name.casefold(): [entry] for entry in entries},
+        assessor_availability_type_by_date={"15/04/26": {"assessor a": "Half day GLF"}},
+    )
+    records = allocate_assessments([make_need(f"P{i}", "Rx Check", f"G{i}") for i in range(1, 5)], roster)
+    assert [record.status for record in records] == ["Allocated", "Allocated", "Unallocated", "Unallocated"]
 
 
 def test_capacity_and_minicex_limits_are_enforced() -> None:
@@ -269,3 +311,111 @@ def test_summary_counts_skipped() -> None:
     roster = roster_for([], {})
     records = allocate_assessments([skipped], roster)
     assert summarize_records(records) == {"allocated": 0, "unallocated": 0, "skipped": 1}
+
+
+def test_reordered_glf_name_matches_roster_and_is_never_its_own_assessor() -> None:
+    roster = roster_for(
+        [RosterEntry("Kelly Ho", "15/04/26", "OPS"), RosterEntry("Charlotte Loh", "16/04/26", "Ward")],
+        {"15/04/26": ["Kelly Ho", "Assessor A"], "16/04/26": ["Kelly Ho", "Assessor A"]},
+    )
+    records = allocate_assessments(
+        [make_need("Ho Siang Kin Kelly", "Dispensing", "H2"), make_need("Loh Yen Shan Charlotte", "MiniCeX", "J3")],
+        roster,
+    )
+    assert records[0].status == "Allocated"
+    assert records[0].assigned_assessor == "Assessor A"
+    assert records[1].status == "Allocated"
+    assert records[1].assigned_assessor != "Kelly Ho"
+
+
+def test_unallocated_reason_distinguishes_missing_from_roster_and_no_usable_days() -> None:
+    roster = RosterData(
+        {"15/04/26": ["Assessor A"]},
+        {"kelly ho": [RosterEntry("Kelly Ho", "15/04/26", "OPS")]},
+        roster_names=["Kelly Ho", "Joan Wee"],
+    )
+    records = allocate_assessments([make_need("Joan Wee (DI/IP)", "Rx Check"), make_need("Tan Elisa", "Rx Check")], roster)
+    assert records[0].reason == "Assessee found in roster but has no Ward or OPS days."
+    assert records[1].reason == "Assessee not found in roster workbook."
+
+
+def test_roster_days_are_tried_in_real_date_order_not_text_order() -> None:
+    roster = roster_for(
+        [RosterEntry("P1", "04/05/26", "Ward"), RosterEntry("P1", "13/04/26", "Ward")],
+        {"04/05/26": ["Assessor A"], "13/04/26": ["Assessor A"]},
+    )
+    records = allocate_assessments([make_need("P1", "MiniCeX", "J2")], roster)
+    assert records[0].date == "13/04/26"
+
+
+def test_preview_records_are_sorted_by_date_then_assessee() -> None:
+    def record(date_text: str, name: str) -> AllocationRecord:
+        return AllocationRecord(
+            date=date_text,
+            assessee_name=name,
+            assessment_type="Rx Check",
+            assessee_location="",
+            assigned_assessor="",
+            assessor_glf_availability_date="",
+            status="Allocated" if date_text else "Unallocated",
+            reason="",
+            original_glf_cell_reference="",
+            existing_allocation_history="",
+        )
+
+    records = [
+        record("04/05/26", "Zoe"),
+        record("", "Unmatched"),
+        record("13/04/26", "Bob"),
+        record("04/05/26", "Amy"),
+        record("", "Another"),
+    ]
+    assert [(r.date, r.assessee_name) for r in sort_records_for_preview(records)] == [
+        ("13/04/26", "Bob"),
+        ("04/05/26", "Amy"),
+        ("04/05/26", "Zoe"),
+        ("", "Unmatched"),
+        ("", "Another"),
+    ]
+
+
+def test_full_day_assessor_already_working_is_reused_before_a_new_assessor() -> None:
+    entries = [RosterEntry(name, "13/04/26", "Ward") for name in ("P1", "P2", "P3")]
+    roster = roster_for(entries, {"13/04/26": ["Assessor A", "Assessor B"]})
+    records = allocate_assessments(
+        [
+            make_need("P1", "Rx Check", "G2"),
+            make_need("P2", "Rx Check", "G3"),
+            make_need("P3", "Med Recon", "I4"),
+            make_need("P3", "MiniCeX", "J4"),
+        ],
+        roster,
+    )
+    assert [record.assigned_assessor for record in records] == ["Assessor A"] * 4
+
+
+def test_new_assessor_for_a_day_is_the_one_who_can_cover_later_assessees() -> None:
+    roster = roster_for(
+        [RosterEntry("Jerald", "15/04/26", "OPS"), RosterEntry("Kristy", "15/04/26", "OPS")],
+        {"15/04/26": ["Genevieve", "Khoo"]},
+    )
+    records = allocate_assessments(
+        [
+            make_need("Jerald", "Rx Check", "G36"),
+            make_need("Jerald", "Dispensing", "H36"),
+            make_need("Kristy", "Rx Check", "G47", existing=("Gen",)),
+        ],
+        roster,
+    )
+    assert [record.assigned_assessor for record in records] == ["Khoo", "Khoo", "Khoo"]
+
+
+def test_assessment_that_does_not_fit_moves_to_the_assessees_next_roster_day() -> None:
+    # P1 is first in the GLF sheet but is the only one with a later roster day,
+    # so P1 is the assessment moved when 13/04 is full.
+    entries = [RosterEntry("P1", "13/04/26", "Ward"), RosterEntry("P1", "14/04/26", "Ward")]
+    entries += [RosterEntry(f"P{i}", "13/04/26", "Ward") for i in range(2, 6)]
+    roster = roster_for(entries, {"13/04/26": ["Assessor A"], "14/04/26": ["Assessor B"]})
+    records = allocate_assessments([make_need(f"P{i}", "Rx Check", f"G{i}") for i in range(1, 6)], roster)
+    assert (records[0].date, records[0].assigned_assessor) == ("14/04/26", "Assessor B")
+    assert [record.assigned_assessor for record in records[1:]] == ["Assessor A"] * 4

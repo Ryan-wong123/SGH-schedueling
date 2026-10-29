@@ -8,7 +8,7 @@ from starlette.background import BackgroundTask
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
-from app.services.allocation_service import allocate_assessments, summarize_records
+from app.services.allocation_service import allocate_assessments, sort_records_for_preview, summarize_records
 from app.services.excel_reader import load_glf_workbook_from_bytes, load_roster_workbook_from_bytes
 from app.services.glf_parser import parse_glf_progress
 from app.services.roster_parser import parse_roster
@@ -74,6 +74,7 @@ async def generate_allocation(
         records = allocate_assessments(needs, roster_data)
         add_generated_allocation_sheet(glf, records)
         output_bytes = save_workbook_to_bytes(glf)
+        records = sort_records_for_preview(records)
         preview_workbook_bytes = create_preview_allocation_workbook(records)
 
         download_id = _store_download(request, output_bytes)

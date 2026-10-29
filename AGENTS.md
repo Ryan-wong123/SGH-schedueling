@@ -75,7 +75,8 @@ The system must:
     - Maximum 4 total assessments per assessor per day on a Full day GLF (`GLF`)
     - Maximum 2 total assessments per assessor per day on a Half day GLF (`/GLF` or `GLF/`)
     - Maximum 2 MiniCeX assessments per assessor per day
-    - An assessor cannot do MiniCeX or Med Recon on the same day as Rx Check (prescription check) or Dispensing. Each assessor's day is either a MiniCeX/Med Recon day or an Rx Check/Dispensing day, never both.
+    - Full day GLF assessors may mix MiniCeX/Med Recon with Rx Check (prescription check)/Dispensing on the same day, within the limits above.
+    - Half day GLF assessors cannot do MiniCeX or Med Recon on the same day as Rx Check or Dispensing. Each half-day assessor's day is either a MiniCeX/Med Recon day or an Rx Check/Dispensing day, never both.
     - Where possible, group an assessor's assessments for the day: prefer giving MiniCeX and Med Recon together, or Rx Check and Dispensing together (for example, the same assessee's MiniCeX and Med Recon to the same assessor on the same day).
 13. Use round-robin allocation among eligible assessors.
 14. Never select a person listed in column A of the GLF progress worksheet as an assessor, including shortened roster-name variants.
@@ -197,16 +198,21 @@ Assessor capacity:
 Full day GLF:  Rx Check + Dispensing + Med Recon + MiniCeX <= 4
 Half day GLF:  Rx Check + Dispensing + Med Recon + MiniCeX <= 2
 MiniCeX <= 2
-Same day: (MiniCeX or Med Recon) and (Rx Check or Dispensing) never mixed for one assessor
+Half day GLF only: (MiniCeX or Med Recon) and (Rx Check or Dispensing) never mixed for one assessor on one day
+Full day GLF: groups may be mixed
 ```
 
-Round-robin selection:
+Assessor selection (two steps):
 
-1. Filter eligible assessors by date, GLF availability, location, capacity, and same-day assessment grouping.
-2. Prefer an eligible assessor who already has assessments from the same group (MiniCeX/Med Recon or Rx Check/Dispensing) that day, ideally for the same assessee.
-3. Then pick the eligible assessor with the fewest assignments for that date.
-4. If tied, pick the assessor least recently used.
-5. If still tied, sort by assessor name alphabetically.
+1. Pick each assessment's date: the assessee's earliest roster day (real date order) with at least one eligible assessor (GLF availability, location, not themself, not a GLF assessee).
+2. Solve each date as a whole, once all of that date's assessments are known. Choose the arrangement that, in priority order:
+   1. allocates the most assessments, within capacity (4 full day, 2 half day, MiniCeX at most 2) and the half-day no-mixing rule;
+   2. when a day is full, leaves out assessments that have another roster day rather than ones that would go unallocated;
+   3. repeats the fewest past assessors (Requirement 16);
+   4. uses the fewest assessors that day;
+   5. has the fewest full-day assessors mixing MiniCeX/Med Recon with Rx Check/Dispensing.
+   Remaining ties are broken by preferring assessors already working that day, then by assessor name alphabetically.
+3. Assessments that do not fit on their date move to the assessee's next roster day, and that date is solved in turn.
 
 ---
 
@@ -254,7 +260,7 @@ The website preview table must:
 2. Populate `Header` from the most recent GLF section header above the assessee row, such as `Y10`, `Y7`, `Y1`, or `New Pre-reg > OPRs`.
 3. Show Ward locations as `Ward (<ward location>)` when a Ward location label is available from the roster workbook.
 4. Match the separate new-allocation workbook columns for allocated records.
-5. Continue to show OPS locations as `OPS`.
+5. Show OPS locations as `OPS (<shift>)` using the shift label from the green OPS cell (e.g. `OPS (C1)`), or `OPS` when no shift label is available.
 
 ---
 
@@ -297,10 +303,10 @@ When implementing or modifying the system, add or update tests for:
 - Capacity rules
 - MiniCeX limit
 - Half day GLF limit of 2 assessments
-- MiniCeX/Med Recon never mixed with Rx Check/Dispensing for one assessor on the same day
+- MiniCeX/Med Recon never mixed with Rx Check/Dispensing for a half-day assessor on the same day; full-day assessors may mix
 - Preference for grouping MiniCeX with Med Recon, and Rx Check with Dispensing
 - Location compatibility
-- Round-robin assignment
+- Per-day assessor solving: fewest assessors per day, and assessments that do not fit move to the next roster day
 - Output worksheet creation
 - Blue highlight on newly allocated copied assessment cells
 - Worksheet preservation

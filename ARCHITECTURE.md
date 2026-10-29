@@ -72,6 +72,7 @@ glf-assessment-scheduler/
       services/
         __init__.py
         allocation_service.py
+        day_assignment.py
         excel_reader.py
         glf_parser.py
         roster_parser.py
@@ -264,9 +265,9 @@ Each item should represent one assessee-assessment pair that is either allocatab
 
 Responsibilities:
 
-- Read only the first worksheet of the Roster Ward Allocation Workbook, for OPS entries, non-ward GLF availability, and Ward allocation.
+- Read only the first worksheet of the Roster Ward Allocation Workbook, for OPS entries, GLF availability, and Ward allocation.
 - Detect assessors with GLF availability.
-- Classify yellow `GLF` cells as `Full day GLF` and yellow `/GLF` cells as `Half day GLF`.
+- Classify yellow `GLF` cells as `Full day GLF` and yellow `/GLF` or `GLF/` cells as `Half day GLF`. Yellow GLF assessors are available for both Ward and OPS entries.
 - Detect assessee schedule date and location.
 - Classify roster cell colours:
   - Yellow = GLF available assessor
@@ -303,17 +304,25 @@ Responsibilities:
 
 - Match GLF assessment needs with roster availability.
 - Enforce assessment location rules.
-- Enforce assessor capacity rules.
-- Run round-robin assessor selection.
+- Enforce assessor capacity rules: 4 per day on Full day GLF, 2 per day on Half day GLF, MiniCeX at most 2.
+- Never give a Half day GLF assessor both MiniCeX/Med Recon and Rx Check/Dispensing on the same day. Full day GLF assessors may mix.
+- Pick each assessment's date (earliest roster day with an eligible assessor), then solve each date as a whole with `day_assignment.solve_day` so all of that day's assessments are known when assessors are chosen.
 - Avoid assessors already used for the same assessee in the GLF second worksheet for all allocatable assessment types, where possible.
 - Exclude every person listed in column A of the GLF progress worksheet from assessor candidates, including shortened roster-name variants.
 - Never assign an assessee to themself, including shortened roster-name variants.
 - Allow new allocations created during the current generation to reuse the same assessor for the same assessee when capacity permits.
-- Produce allocation records, including GLF section headers and display-ready locations such as `Ward (42A (1-8) RS-2)`.
+- Produce allocation records, including GLF section headers and display-ready locations such as `Ward (45A MICA)`, `Ward (67A {CICU})` or `OPS (C1)`.
 
 This module is the core business logic layer.
 
 ---
+
+### 5.4.1 `day_assignment.py`
+
+Responsibilities:
+
+- Hold the capacity rules (`can_accept`, `ASSESSMENT_GROUPS`, `FULL_DAY_LIMIT`, `HALF_DAY_LIMIT`, `MINICEX_LIMIT`).
+- `solve_day(tasks, availability_type)` chooses assessors for every assessment on one date at once and returns `{task key: assessor}`; tasks left out are moved to a later date by `allocation_service`.
 
 ### 5.5 `workbook_writer.py`
 
@@ -382,7 +391,11 @@ Functions:
 ```python
 normalize_name(name: str) -> str
 names_match(a: str, b: str) -> bool
+name_tokens(name: str) -> FrozenSet[str]
+names_token_match(full_name: str, short_name: str) -> bool
 ```
+
+`names_token_match` is true when every word of the shorter (roster) name appears in the full (GLF) name in any order, ignoring punctuation and bracketed notes. It is used for roster lookup, GLF-assessee exclusion and self-assessment checks. `roster_parser.find_roster_entries` and `is_listed_in_roster` treat more than one matching roster name as no match. `RosterData.roster_names` keeps every column A name so the allocation service can tell "not found in roster" apart from "found in roster but has no Ward or OPS days".
 
 Normalization rules:
 
@@ -520,17 +533,20 @@ For each assessment need from the GLF workbook:
 8. Exclude every person listed in column A of the GLF progress worksheet from assessor candidates, including shortened roster-name variants.
 9. Filter assessors by location compatibility.
 10. Filter assessors by capacity:
-   - Total assessments < 4
+   - Total assessments < 4 (Full day GLF) or < 2 (Half day GLF)
    - MiniCeX assessments < 2 if MiniCeX
+   - Half day GLF only: no assessments from the other group (MiniCeX/Med Recon vs Rx Check/Dispensing) that day
 11. For Rx Check, Dispensing, Med Recon, and MiniCeX, avoid existing assessor history for that assessee from the GLF second worksheet.
     New allocations made in the current generation are controlled by capacity rules. Prefer reusing a same-day assessor already selected for the same assessee when that assessor remains eligible.
-12. Use round-robin tie-breaking after same-day same-assessee reuse preference.
+12. Group assessments by their chosen date and solve each date with `day_assignment.solve_day`: a branch-and-bound search that maximises assessments allocated, then minimises assessments stranded with no later day, repeated past assessors, assessors used, and full-day group mixing. Unused assessors with identical eligibility are treated as interchangeable to keep the search small, and a node limit (200,000 steps) caps very busy days, keeping the best arrangement found. Assessments that do not fit move to the assessee's next roster day.
 13. Create allocation record.
 14. If no assessor is available, create unallocated record with reason.
 
 ---
 
 ## 9. Preview Output Structure
+
+`allocation_service.sort_records_for_preview` orders preview and new-allocation workbook rows by real date, then assessee name; undated rows go last in GLF order. The generated GLF worksheet is written by cell reference and is unaffected by this order. Roster days for an assessee are also tried in real date order, not `dd/mm/yy` text order.
 
 The API preview records and the separate new-allocation workbook use these fields:
 
@@ -608,7 +624,7 @@ Test the logic in layers:
 3. Allocation tests
    - Capacity limits
    - Location compatibility
-   - Round-robin logic
+   - Per-day assessor solving (fewest assessors, repeat avoidance, capacity) and moving assessments that do not fit to the next roster day
    - Repeat-assessor avoidance
 4. Writer tests
    - Generated worksheet insertion
