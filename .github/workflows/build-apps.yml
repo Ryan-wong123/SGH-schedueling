@@ -40,6 +40,7 @@ jobs:
         with:
           name: GLF-Assessment-Scheduler-mac-${{ matrix.label }}
           path: dist/GLF-Assessment-Scheduler-mac-${{ matrix.label }}.zip
+          retention-days: 1
 
   build-windows:
     runs-on: windows-latest
@@ -62,3 +63,4 @@ jobs:
         with:
           name: GLF-Assessment-Scheduler-windows
           path: dist/GLF Assessment Scheduler.exe
+          retention-days: 1
