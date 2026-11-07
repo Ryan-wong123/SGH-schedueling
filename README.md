@@ -76,3 +76,20 @@ dist\GLF Assessment Scheduler.exe
 
 Copy that `.exe` to another Windows computer and double-click it. It starts the local scheduler server and opens the app in the browser.
 
+## Build A Standalone macOS App
+
+PyInstaller cannot cross-compile, so this must be run **on a Mac** (it needs Python 3 and Node.js/npm):
+
+```bash
+chmod +x scripts/build-mac.sh
+./scripts/build-mac.sh
+```
+
+The finished executable is created at `dist/GLF Assessment Scheduler`. It uses the same `GLF Scheduler.spec` as the Windows build, and matches the CPU of the Mac that built it (Apple Silicon vs Intel).
+
+### Build without a Mac (GitHub Actions)
+
+The workflow `.github/workflows/build-apps.yml` builds the Windows `.exe` plus an Apple Silicon and an Intel macOS version on GitHub runners. Push the repo to GitHub, open **Actions → Build apps → Run workflow** (it also runs on tags like `v1.0`), then download the zips from the run's **Artifacts** section. Unzip on the Mac and follow the notes below.
+
+Copy it to another Mac and run it. If macOS blocks it because it was downloaded, run `xattr -d com.apple.quarantine "GLF Assessment Scheduler"` and `chmod +x "GLF Assessment Scheduler"` first.
+
