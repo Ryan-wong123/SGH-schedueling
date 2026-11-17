@@ -38,6 +38,33 @@ jobs:
         run: |
           ditto -c -k "dist/GLF Assessment Scheduler" "dist/GLF-Assessment-Scheduler-mac-${{ matrix.label }}.zip"
 
+      # Simulates a user's Mac as far as a headless runner can: unzip the shipped
+      # zip, add the download quarantine flag, check the signature and Gatekeeper
+      # verdict, then start the app and call /health. The Gatekeeper dialog itself
+      # is GUI-only and cannot be shown on a runner.
+      - name: Simulate user download and smoke test
+        run: |
+          mkdir sim && cd sim
+          ditto -x -k "../dist/GLF-Assessment-Scheduler-mac-${{ matrix.label }}.zip" .
+          ls -l
+          test -x "GLF Assessment Scheduler" || { echo "FAIL: executable bit lost after unzip"; exit 1; }
+          xattr -w com.apple.quarantine "0081;00000000;Safari;" "GLF Assessment Scheduler"
+          xattr -l "GLF Assessment Scheduler"
+          codesign --verify --verbose=2 "GLF Assessment Scheduler"
+          codesign -dv "GLF Assessment Scheduler" 2>&1 | grep -E "Signature|flags" || true
+          echo "Gatekeeper verdict (rejected is expected without notarization):"
+          spctl --assess --type execute --verbose=4 "GLF Assessment Scheduler" 2>&1 || true
+          xattr -d com.apple.quarantine "GLF Assessment Scheduler"
+          "./GLF Assessment Scheduler" --no-open > app.log 2>&1 &
+          APP_PID=$!
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health; then echo; echo "App started OK"; kill $APP_PID; exit 0; fi
+            sleep 1
+          done
+          cat app.log
+          kill $APP_PID || true
+          exit 1
+
       - uses: actions/upload-artifact@v4
         with:
           name: GLF-Assessment-Scheduler-mac-${{ matrix.label }}
