@@ -91,5 +91,5 @@ The finished executable is created at `dist/GLF Assessment Scheduler`. It uses t
 
 The workflow `.github/workflows/build-apps.yml` builds the Windows `.exe` plus an Apple Silicon and an Intel macOS version on GitHub runners. Push the repo to GitHub, open **Actions → Build apps → Run workflow** (it also runs on tags like `v1.0`), then download the zips from the run's **Artifacts** section. Unzip on the Mac and follow the notes below.
 
-Copy it to another Mac and run it. If macOS blocks it because it was downloaded, run `xattr -d com.apple.quarantine "GLF Assessment Scheduler"` and `chmod +x "GLF Assessment Scheduler"` first.
+The macOS build is ad-hoc signed (`codesign --sign -`, no Apple Developer account needed). It is not notarized, so on first run macOS shows a "can't verify the developer" prompt that users clear once via **System Settings → Privacy & Security → Open Anyway** (no Terminal needed). See [docs/MACOS-FIRST-RUN.md](docs/MACOS-FIRST-RUN.md) for a user-friendly guide. Terminal fallback: `xattr -cr "GLF Assessment Scheduler"`.
 

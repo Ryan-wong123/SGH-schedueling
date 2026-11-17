@@ -639,3 +639,7 @@ Test the logic in layers:
 6. Frontend tests or manual verification
    - Date range filtering of allocated preview rows
    - Available-but-not-allocated assessor list for selected date range
+
+## macOS Packaging
+
+The macOS build (`scripts/build-mac.sh`, `.github/workflows/build-apps.yml`) is ad-hoc signed with `codesign --sign -` and zipped with `ditto`. There is no Apple Developer ID or notarization, so users clear Gatekeeper once via System Settings > Privacy & Security > Open Anyway (`docs/MACOS-FIRST-RUN.md`).

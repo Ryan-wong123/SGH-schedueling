@@ -31,10 +31,12 @@ jobs:
       - name: Build app
         run: bash scripts/build-mac.sh
 
-      - name: Zip (keeps executable bit)
+      - name: Verify ad-hoc signature
+        run: codesign --verify --verbose=2 "dist/GLF Assessment Scheduler"
+
+      - name: Zip (keeps executable bit and signature)
         run: |
-          cd dist
-          zip -j "GLF-Assessment-Scheduler-mac-${{ matrix.label }}.zip" "GLF Assessment Scheduler"
+          ditto -c -k "dist/GLF Assessment Scheduler" "dist/GLF-Assessment-Scheduler-mac-${{ matrix.label }}.zip"
 
       - uses: actions/upload-artifact@v4
         with:
