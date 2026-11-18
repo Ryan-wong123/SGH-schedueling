@@ -46,11 +46,15 @@ fi
 
 (cd "$ROOT" && "$VENV_PYTHON" -m PyInstaller --clean --noconfirm "$SPEC_FILE")
 
+# Ad-hoc sign (no Apple Developer account needed). A valid signature turns macOS's
+# "is damaged and can't be opened" message into the normal "Open Anyway" prompt.
+codesign --force --sign - "$APP_FILE"
+codesign --verify --verbose=2 "$APP_FILE"
+
 echo
-echo "Created standalone application:"
+echo "Created ad-hoc signed standalone application:"
 echo "$APP_FILE"
 echo
-echo "Copy this file to another Mac and run it. If macOS blocks it because it was"
-echo "downloaded, run:  xattr -d com.apple.quarantine \"GLF Assessment Scheduler\""
-echo "then  chmod +x \"GLF Assessment Scheduler\"  and open it from Terminal or double-click it."
+echo "Share it as a zip made with:  ditto -c -k \"$APP_FILE\" GLF-Assessment-Scheduler-mac.zip"
+echo "First run on another Mac: see docs/MACOS-FIRST-RUN.md (System Settings > Privacy & Security > Open Anyway)."
 echo "Note: the build matches the Mac's CPU (Apple Silicon vs Intel)."

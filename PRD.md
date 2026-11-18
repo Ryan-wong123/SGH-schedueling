@@ -1200,3 +1200,7 @@ The project is complete when:
 29. The system outputs a separate new-allocation workbook for download.
 30. The separate new-allocation workbook follows the website preview output.
 31. Errors are shown clearly to the user.
+
+## Distribution Note: macOS
+
+The macOS build is ad-hoc signed (no Apple Developer account). First run requires the user to click Open Anyway in System Settings; a non-technical guide is in `docs/MACOS-FIRST-RUN.md`.
